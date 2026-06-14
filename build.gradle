@@ -16,7 +16,7 @@ dependencies {
 }
 
 omegat {
-    version = '6.1.0'
+    version = '6.0.0'
     pluginClass = 'org.omegat.machinetranslators.deepseek.DeepSeekPlugin'
 }
 
