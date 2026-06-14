@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-06-14T09:44:15.184Z" hostname="W10-20231029188" time="0.382">
+<testsuite name="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-06-14T10:42:20.730Z" hostname="W10-20231029188" time="0.451">
   <properties/>
-  <testcase name="extractTranslation" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.321"/>
-  <testcase name="createJsonRequest" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.029"/>
-  <testcase name="extractTranslationMissingChoiceFails" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.001"/>
+  <testcase name="extractTranslation" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.381"/>
+  <testcase name="createJsonRequest" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.034"/>
+  <testcase name="extractTranslationMissingChoiceFails" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.002"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
