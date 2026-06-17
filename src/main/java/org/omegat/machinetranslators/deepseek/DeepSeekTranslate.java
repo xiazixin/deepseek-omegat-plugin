@@ -1,11 +1,14 @@
 package org.omegat.machinetranslators.deepseek;
 
+import java.awt.GridBagConstraints;
 import java.awt.Window;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.TreeMap;
+
+import javax.swing.JComboBox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,7 +31,10 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     public static final String PROPERTY_MODEL = "deepseek.api.model";
     public static final String PROPERTY_URL = "deepseek.api.url";
 
-    private static final String DEFAULT_MODEL = "deepseek-v4-flash";
+    private static final String MODEL_DEEPSEEK_V4_PRO = "deepseek-v4-pro";
+    private static final String MODEL_DEEPSEEK_V4_FLASH = "deepseek-v4-flash";
+    private static final String[] AVAILABLE_MODELS = { MODEL_DEEPSEEK_V4_PRO, MODEL_DEEPSEEK_V4_FLASH };
+    private static final String DEFAULT_MODEL = MODEL_DEEPSEEK_V4_FLASH;
     private static final String DEFAULT_URL = "https://api.deepseek.com";
     private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
     private static final String BUNDLE_BASENAME = "org.omegat.machinetranslators.deepseek.Bundle";
@@ -83,12 +89,16 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
 
     @Override
     public void showConfigurationUI(Window parent) {
+        // Replace the default text field with a combo box for model selection
+        JComboBox<String> modelComboBox = new JComboBox<>(AVAILABLE_MODELS);
+        modelComboBox.setSelectedItem(getModel());
+
         MTConfigDialog dialog = new MTConfigDialog(parent, getName()) {
             @Override
             protected void onConfirm() {
                 boolean temporary = panel.temporaryCheckBox.isSelected();
                 String apiKey = panel.valueField1.getText().trim();
-                String model = panel.valueField2.getText().trim();
+                String model = modelComboBox.getSelectedItem().toString();
 
                 setCredential(PROPERTY_API_KEY, apiKey, temporary);
                 Preferences.setPreference(PROPERTY_MODEL, model);
@@ -101,7 +111,15 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         dialog.panel.temporaryCheckBox.setSelected(isCredentialStoredTemporarily(PROPERTY_API_KEY));
 
         dialog.panel.valueLabel2.setText(BUNDLE.getString("MT_ENGINE_DEEPSEEK_MODEL_LABEL"));
-        dialog.panel.valueField2.setText(getModel());
+
+        // valueField2 lives inside credentialsPanel which uses GridBagLayout
+        java.awt.Container credentialsPanel = dialog.panel.valueField2.getParent();
+        GridBagConstraints gbc = ((java.awt.GridBagLayout) credentialsPanel.getLayout())
+                .getConstraints(dialog.panel.valueField2);
+        credentialsPanel.remove(dialog.panel.valueField2);
+        credentialsPanel.add(modelComboBox, gbc);
+        credentialsPanel.revalidate();
+        credentialsPanel.repaint();
 
         dialog.show();
     }
