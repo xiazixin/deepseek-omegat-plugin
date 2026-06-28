@@ -89,7 +89,7 @@ Context segments are truncated to the configured character limit (200–1000, or
 ## Changelog
 
 ### v1.4.1
-- Configurable context character limit (200/400/600/800/1000/No limit) instead of hardcoded 600
+- Configurable context character limit (200/400/600/800/1000/No limit) instead of hardcoded 200
 - Temperature slider fades (greys out) instead of hiding with Dynamic Temperature
 
 ### v1.4.0
