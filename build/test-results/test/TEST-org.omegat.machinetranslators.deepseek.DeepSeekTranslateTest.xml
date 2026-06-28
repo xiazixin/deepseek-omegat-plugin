@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-06-18T07:27:38.210Z" hostname="W10-20231029188" time="0.389">
+<testsuite name="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-06-28T04:50:11.815Z" hostname="W10-20231029188" time="0.38">
   <properties/>
-  <testcase name="createJsonRequestDynamicTemperature" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.344"/>
+  <testcase name="contextSegmentsEnabledDoesNotCrashWithoutProject" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.347"/>
+  <testcase name="createJsonRequestDynamicTemperature" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.002"/>
   <testcase name="extractTranslation" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.0"/>
-  <testcase name="createJsonRequest" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.016"/>
-  <testcase name="extractTranslationMissingChoiceFails" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.001"/>
+  <testcase name="glossaryModeStrictDoesNotCrashWithoutProject" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.001"/>
+  <testcase name="glossaryModeNoneProducesStandardPrompt" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.0"/>
+  <testcase name="createJsonRequest" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.001"/>
+  <testcase name="extractTranslationMissingChoiceFails" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.0"/>
+  <testcase name="glossaryModeReferenceDoesNotCrashWithoutProject" classname="org.omegat.machinetranslators.deepseek.DeepSeekTranslateTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
