@@ -48,6 +48,7 @@ Open OmegaT's machine translation settings and configure the DeepSeek engine.
 | Dynamic Temperature | Off | When enabled, lets the API auto-adjust temperature — the slider is ignored |
 | Glossary | None | **None** — glossary disabled. **Reference** — glossary entries are sent as hints; the AI uses judgment and won't blindly override compound terms (e.g. `白金色` stays `platinum color` even with `金色 → gold color` in the glossary). **Strict** — glossary entries must be used exactly. |
 | Context segments | 0 | Number of surrounding segments (above and below) to include as context. 0 = disabled, up to 3. Helps AI maintain narrative continuity and tone. |
+| Context char limit | 400 | Max characters per context segment before truncation. Options: 200, 400, 600, 800, 1000, or No limit. Adjust based on your segment size. |
 
 You can also override settings with system properties:
 
@@ -75,7 +76,7 @@ When set to a value greater than 0, the plugin includes up to N segments above a
 
 **Segments above** include both the source text *and* the user's actual stored translation from OmegaT (shown as `SRC → TRG`). This means if you manually edit a translation, the AI sees your corrected version — not its own raw output. Falls back to the plugin's own cached output if no stored translation exists yet.
 
-Context segments are truncated to 200 characters each. When no OmegaT project is open, this feature is silently skipped.
+Context segments are truncated to the configured character limit (200–1000, or no limit). Adjust based on your typical segment size — higher values for paragraph-level segmentation, lower for sentence-level. Default is 400 characters.
 
 ## Notes
 

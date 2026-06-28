@@ -66,6 +66,11 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private static final int CONTEXT_SEGMENTS_DEFAULT = 0;
     private static final int CONTEXT_SEGMENTS_MAX = 3;
 
+    /** Max characters per context segment before truncation */
+    public static final String PROPERTY_CONTEXT_TRUNCATION = "deepseek.api.context_truncation";
+    private static final int CONTEXT_TRUNCATION_DEFAULT = 400;
+    private static final int[] CONTEXT_TRUNCATION_OPTIONS = { 200, 400, 600, 800, 1000, 0 };
+
     private static final String MODEL_DEEPSEEK_V4_PRO = "deepseek-v4-pro";
     private static final String MODEL_DEEPSEEK_V4_FLASH = "deepseek-v4-flash";
     private static final String[] AVAILABLE_MODELS = { MODEL_DEEPSEEK_V4_PRO, MODEL_DEEPSEEK_V4_FLASH };
@@ -159,6 +164,17 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         JComboBox<String> contextComboBox = new JComboBox<>(contextOptions);
         contextComboBox.setSelectedIndex(Math.min(contextSegments, CONTEXT_SEGMENTS_MAX));
 
+        // Context truncation combo box (character limit per context segment)
+        int truncation = getContextTruncation();
+        String[] truncationOptions = new String[CONTEXT_TRUNCATION_OPTIONS.length];
+        for (int i = 0; i < CONTEXT_TRUNCATION_OPTIONS.length - 1; i++) {
+            truncationOptions[i] = String.valueOf(CONTEXT_TRUNCATION_OPTIONS[i]);
+        }
+        truncationOptions[CONTEXT_TRUNCATION_OPTIONS.length - 1] =
+            BUNDLE.getString("MT_ENGINE_DEEPSEEK_CONTEXT_TRUNCATION_NOLIMIT");
+        JComboBox<String> truncationComboBox = new JComboBox<>(truncationOptions);
+        truncationComboBox.setSelectedIndex(truncationToIndex(truncation));
+
         // Slider sub-panel (label + slider)
         JPanel sliderPanel = new JPanel(new BorderLayout(5, 0));
         JLabel tempLabel = new JLabel(BUNDLE.getString("MT_ENGINE_DEEPSEEK_TEMPERATURE_LABEL"));
@@ -205,6 +221,8 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                 boolean dynamic = dynamicCheckBox.isSelected();
                 int glossaryModeIdx = glossaryComboBox.getSelectedIndex();
                 int contextSegmentsVal = contextComboBox.getSelectedIndex();
+                int truncationIdx = truncationComboBox.getSelectedIndex();
+                int truncationVal = CONTEXT_TRUNCATION_OPTIONS[truncationIdx];
 
                 setCredential(PROPERTY_API_KEY, apiKey, temporary);
                 Preferences.setPreference(PROPERTY_MODEL, model);
@@ -212,6 +230,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                 Preferences.setPreference(PROPERTY_DYNAMIC_TEMPERATURE, dynamic);
                 Preferences.setPreference(PROPERTY_GLOSSARY_MODE, glossaryModeIdx);
                 Preferences.setPreference(PROPERTY_CONTEXT_SEGMENTS, contextSegmentsVal);
+                Preferences.setPreference(PROPERTY_CONTEXT_TRUNCATION, truncationVal);
                 clearCache();
             }
         };
@@ -253,6 +272,14 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         contextPanel.add(contextLabel, BorderLayout.NORTH);
         contextPanel.add(contextComboBox, BorderLayout.CENTER);
         dialog.panel.itemsPanel.add(contextPanel);
+
+        // Context truncation panel
+        JPanel truncationPanel = new JPanel(new BorderLayout(5, 0));
+        truncationPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        JLabel truncationLabel = new JLabel(BUNDLE.getString("MT_ENGINE_DEEPSEEK_CONTEXT_TRUNCATION_LABEL"));
+        truncationPanel.add(truncationLabel, BorderLayout.NORTH);
+        truncationPanel.add(truncationComboBox, BorderLayout.CENTER);
+        dialog.panel.itemsPanel.add(truncationPanel);
 
         dialog.show();
     }
@@ -343,6 +370,21 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
 
     private int getContextSegments() {
         return Preferences.getPreferenceDefault(PROPERTY_CONTEXT_SEGMENTS, CONTEXT_SEGMENTS_DEFAULT);
+    }
+
+    private int getContextTruncation() {
+        return Preferences.getPreferenceDefault(PROPERTY_CONTEXT_TRUNCATION, CONTEXT_TRUNCATION_DEFAULT);
+    }
+
+    private static int truncationToIndex(int value) {
+        for (int i = 0; i < CONTEXT_TRUNCATION_OPTIONS.length; i++) {
+            if (CONTEXT_TRUNCATION_OPTIONS[i] == value) return i;
+        }
+        // Default to 400
+        for (int i = 0; i < CONTEXT_TRUNCATION_OPTIONS.length; i++) {
+            if (CONTEXT_TRUNCATION_OPTIONS[i] == CONTEXT_TRUNCATION_DEFAULT) return i;
+        }
+        return 1;
     }
 
     /** Tracks sequential translation position for efficient context lookups */
@@ -630,6 +672,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private String getContextText(int position, int count) {
         if (count <= 0 || position < 0) return "";
         List<String> sources = getCachedAllSources();
+        int truncLen = getContextTruncation();
 
         StringBuilder sb = new StringBuilder();
         sb.append("\n\nSurrounding context for reference (DO NOT translate these — only the current segment):");
@@ -638,8 +681,8 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         int aboveStart = Math.max(0, position - count);
         for (int i = aboveStart; i < position; i++) {
             String src = sources.get(i).replace('\n', ' ').replace('\r', ' ');
-            if (src.length() > 200) {
-                src = src.substring(0, 200) + "...";
+            if (truncLen > 0 && src.length() > truncLen) {
+                src = src.substring(0, truncLen) + "...";
             }
             if (!hasAbove) {
                 sb.append("\n[Above] ");
@@ -655,8 +698,8 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             }
             if (storedTrg != null) {
                 String trgSnippet = storedTrg.replace('\n', ' ').replace('\r', ' ');
-                if (trgSnippet.length() > 200) {
-                    trgSnippet = trgSnippet.substring(0, 200) + "...";
+                if (truncLen > 0 && trgSnippet.length() > truncLen) {
+                    trgSnippet = trgSnippet.substring(0, truncLen) + "...";
                 }
                 sb.append("  →  ").append(trgSnippet);
             }
@@ -670,8 +713,8 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         int belowEnd = Math.min(sources.size(), position + count + 1);
         for (int i = position + 1; i < belowEnd; i++) {
             String t = sources.get(i).replace('\n', ' ').replace('\r', ' ');
-            if (t.length() > 200) {
-                t = t.substring(0, 200) + "...";
+            if (truncLen > 0 && t.length() > truncLen) {
+                t = t.substring(0, truncLen) + "...";
             }
             if (!hasBelow) {
                 sb.append("\n[Below] ");
