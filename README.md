@@ -1,6 +1,6 @@
 # DeepSeek OmegaT Plugin (Dev) ![version](https://img.shields.io/badge/version-1.4.1--dev-orange)
 
-> ⚠️ **Development fork** — this is a development build with experimental features and debug tooling. For the stable release, see the [upstream repository](https://github.com/xiazixin/deepseek-omegat-plugin).
+> **Development fork** — this is a development build with experimental features and debug tooling. For the stable release, see the [upstream repository](https://github.com/xiazixin/deepseek-omegat-plugin).
 
 This plugin adds DeepSeek as a machine translation provider in OmegaT.
 
@@ -89,6 +89,71 @@ Context segments are truncated to the configured character limit (200–1000, or
 - In **Reference** glossary mode, glossary entries are sent as contextual hints — the AI is instructed to use judgment and not blindly apply partial matches (e.g., compound words containing a glossary term won't be incorrectly split).
 - Context segments are looked up from the project's ordered entry list using sequential position tracking for efficiency.
 - When no OmegaT project is open, glossary and context features are silently skipped with no errors.
+- Debug mode logs can be found in OmegaT's log viewer. Look for `[DeepSeek Debug]` prefixed entries.
+
+## Debug Output
+
+When **Debug mode** is enabled, every translation request logs both the outgoing JSON and the incoming response. Here is an annotated example with **Glossary: Reference**, **Context segments: 3**, **Context limit: No limit**, and **Model: deepseek-v4-flash**:
+
+### Request (what is sent to DeepSeek)
+
+```json
+{
+  "messages": [
+    {
+      "content": "You are a professional translation engine for OmegaT. Translate from zh-CN to en-US. ...\n\nSurrounding context for reference (DO NOT translate these — only the current segment):\n[Above] 不过和第一次相比，这次伊恩就看不见自己身上的黑气。  →  However, compared to the first time, this time Ian could not see the black mist on himself. /// ...\n[Below] 黑曜石的刀刃边缘，有一层暗红的色泽... /// ...\n\nReference glossary — use judgment...:\n- 伊恩 → Ian  [Name of main character]\n伊恩认识那小刀。",
+      "role": "system"
+    },
+    {
+      "content": "伊恩认识那小刀。",
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-v4-flash",
+  "stream": false
+}
+```
+
+**Key:**
+
+| Part | Label in JSON | Description |
+|---|---|---|
+| 🔶 Context above | `[Above] … /// …` | Up to N segments *above* the current one, each shown as `SOURCE  →  TRANSLATION` |
+| 🔸 Context below | `[Below] … /// …` | Up to N segments *below* the current one (source text only) |
+| 🟢 Glossary | `- source → target [comment]` | Matching glossary entries from the project's glossary folder |
+| 🔴 Current segment | `"content":"…","role":"user"` | The actual segment that needs to be translated |
+
+### Response (what DeepSeek returns)
+
+```json
+{
+  "id": "...",
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "Ian recognized the knife.",
+        "reasoning_content": "We need to translate the Chinese sentence... '认识' can mean 'recognize' or 'know'. Given context of Ian seeing the knife, 'recognized' fits better..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 346,
+    "completion_tokens": 170,
+    "total_tokens": 516
+  }
+}
+```
+
+**Key:**
+
+| Part | Field | Description |
+|---|---|---|
+| 🔵 Reasoning | `reasoning_content` | The AI's internal chain-of-thought — how it arrived at the translation (DeepSeek V4 Pro/Flash reasoning models only) |
+| ✅ Final output | `content` | The translated text returned to OmegaT |
+| 📊 Token usage | `usage` | Prompt tokens, completion tokens, and total — useful for cost estimation |
 
 ## Changelog
 
