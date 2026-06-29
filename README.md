@@ -88,7 +88,11 @@ Context segments are truncated to the configured character limit (200–1000, or
 
 ## Known Issues
 
-- **Context segments + ellipsis segments**: When **Context segments** is set greater than 0 and the current source segment consists only of punctuation/ellipsis (e.g., `......`), there is a small chance the API will return translations for the *next* few segments instead of the current one. This occurs because the model misidentifies the ellipsis as a scene break or continuation marker when context is provided. **Workaround**: temporarily set Context segments to 0 when translating isolated punctuation segments, or manually correct the output after translation.
+- **Context segments + ellipsis segments**: When **Context segments** is set greater than 0 and the current source segment consists only of punctuation/ellipsis (e.g., `......`), there is a small chance the API will return translations for the *next* few segments instead of the current one. This occurs because the model misidentifies the ellipsis as a scene break or continuation marker when context is provided.
+
+  ![Ellipsis segment misidentification example](docs/images/known-issue-context-segment.png)
+
+  **Workaround**: temporarily set Context segments to 0 when translating isolated punctuation segments, or manually correct the output after translation.
 
 ## Changelog
 
