@@ -6,8 +6,9 @@ import java.awt.Window;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -251,7 +252,8 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
 
             String[] lines = glossaryBlock.split("\\n");
             int added = 0;
-            try (PrintWriter writer = new PrintWriter(new FileWriter(autoFile, true))) {
+            try (PrintWriter writer = new PrintWriter(
+                    new OutputStreamWriter(new FileOutputStream(autoFile, true), StandardCharsets.UTF_8))) {
                 for (String line : lines) {
                     line = line.trim();
                     if (line.isEmpty() || line.startsWith("#")) continue;
