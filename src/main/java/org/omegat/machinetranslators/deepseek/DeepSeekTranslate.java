@@ -613,6 +613,10 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         autoConfirmWrapper.setBorder(BorderFactory.createEmptyBorder(2, 20, 0, 0));
         autoConfirmWrapper.add(autoConfirmCheckBox, BorderLayout.CENTER);
         autoInsertPanel.add(autoConfirmWrapper, BorderLayout.CENTER);
+        JLabel autoHelpLabel = new JLabel(
+                "<html>" + BUNDLE.getString("MT_ENGINE_DEEPSEEK_AUTO_HELP_LABEL") + "</html>");
+        autoHelpLabel.setBorder(BorderFactory.createEmptyBorder(4, 20, 0, 0));
+        autoInsertPanel.add(autoHelpLabel, BorderLayout.SOUTH);
         dialog.panel.itemsPanel.add(autoInsertPanel);
 
         // Auto-glossary panel
