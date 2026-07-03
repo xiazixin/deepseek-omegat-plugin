@@ -3,12 +3,14 @@ package org.omegat.machinetranslators.deepseek;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
 
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import org.omegat.core.Core;
 import org.omegat.core.CoreEvents;
 import org.omegat.core.data.SourceTextEntry;
 import org.omegat.core.events.IEntryEventListener;
+import org.omegat.gui.editor.IEditor;
 import org.omegat.util.Log;
 import org.omegat.util.Preferences;
 
@@ -130,6 +132,8 @@ public final class DeepSeekPlugin {
             if (newState) {
                 Core.getMainWindow().showLengthMessage("⚡ AUTO");
                 startIndicator();
+                // Trigger translation for the current segment if already loaded
+                retriggerCurrentSegment();
             } else {
                 Core.getMainWindow().showLengthMessage("");
                 stopIndicator();
@@ -137,6 +141,29 @@ public final class DeepSeekPlugin {
         } catch (Exception ignored) {
             // Status bar may not be available (e.g. console mode)
         }
+    }
+
+    /**
+     * When auto-mode is toggled ON, the current segment may already have a
+     * translation loaded in the MT pane. Re-activate the entry so OmegaT
+     * re-fetches the translation, which then gets auto-inserted.
+     */
+    private static void retriggerCurrentSegment() {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                IEditor editor = Core.getEditor();
+                if (editor == null) return;
+                SourceTextEntry entry = editor.getCurrentEntry();
+                if (entry == null) return;
+                String trans = editor.getCurrentTranslation();
+                if (trans != null && !trans.trim().isEmpty()) return;
+                // Re-activate to trigger MT re-fetch; the entry listener
+                // will see this as the same lastAutoEntryNum and ignore it
+                DeepSeekTranslate.lastAutoEntryNum = entry.entryNum();
+                DeepSeekTranslate.expectingAutoActivation = false;
+                editor.activateEntry();
+            } catch (Exception ignored) { }
+        });
     }
 
     /**
