@@ -610,15 +610,19 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         // Auto-insert / Auto-confirm panel
         JPanel autoInsertPanel = new JPanel(new BorderLayout(5, 0));
         autoInsertPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
-        autoInsertPanel.add(autoInsertCheckBox, BorderLayout.NORTH);
+        // Help text above the checkboxes
+        JLabel autoHelpLabel = new JLabel(
+                "<html>" + BUNDLE.getString("MT_ENGINE_DEEPSEEK_AUTO_HELP_LABEL") + "</html>");
+        autoHelpLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
+        autoInsertPanel.add(autoHelpLabel, BorderLayout.NORTH);
+        // Checkboxes below the help text
+        JPanel autoCheckBoxesPanel = new JPanel(new BorderLayout(5, 0));
+        autoCheckBoxesPanel.add(autoInsertCheckBox, BorderLayout.NORTH);
         JPanel autoConfirmWrapper = new JPanel(new BorderLayout());
         autoConfirmWrapper.setBorder(BorderFactory.createEmptyBorder(2, 20, 0, 0));
         autoConfirmWrapper.add(autoConfirmCheckBox, BorderLayout.CENTER);
-        autoInsertPanel.add(autoConfirmWrapper, BorderLayout.CENTER);
-        JLabel autoHelpLabel = new JLabel(
-                "<html>" + BUNDLE.getString("MT_ENGINE_DEEPSEEK_AUTO_HELP_LABEL") + "</html>");
-        autoHelpLabel.setBorder(BorderFactory.createEmptyBorder(4, 20, 0, 0));
-        autoInsertPanel.add(autoHelpLabel, BorderLayout.SOUTH);
+        autoCheckBoxesPanel.add(autoConfirmWrapper, BorderLayout.CENTER);
+        autoInsertPanel.add(autoCheckBoxesPanel, BorderLayout.CENTER);
         dialog.panel.itemsPanel.add(autoInsertPanel);
 
         // Auto-glossary panel
