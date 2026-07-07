@@ -1,6 +1,4 @@
-# DeepSeek OmegaT Plugin (Dev) ![version](https://img.shields.io/badge/version-1.4.1--dev-orange)
-
-> **Development fork** — this is a development build with experimental features and debug tooling. For the stable release, see the [upstream repository](https://github.com/xiazixin/deepseek-omegat-plugin).
+# DeepSeek OmegaT Plugin ![version](https://img.shields.io/badge/version-1.5.1-blue)
 
 This plugin adds DeepSeek as a machine translation provider in OmegaT.
 
@@ -12,6 +10,15 @@ This plugin adds DeepSeek as a machine translation provider in OmegaT.
 - **Glossary support** — automatically reads OmegaT project glossaries and passes matching entries (with comments) to the AI as translation hints.
 - **Context segments** — optionally sends surrounding segments (above/below) to the AI for better continuity and tone consistency across sentences.
 - **Debug mode** — when enabled, logs the full JSON request and response to OmegaT's log for troubleshooting.
+- **Auto-insert** — when active, automatically fills the target segment with the machine translation result, eliminating the need to press Ctrl+M for every segment.
+- **Auto-confirm** — when active, also commits the translation and advances to the next segment (use with caution).
+- **Auto-glossary** — the AI suggests key terminology pairs alongside each translation, including optional usage comments. Entries saved to `deepseek_auto_glossary.txt`.
+- **Self-review agent** — a second AI pass reviews each translation for tag preservation, glossary consistency, accuracy, and fluency — correcting errors automatically.
+- **Hotkey toggle** — press **Ctrl+Shift+M** anytime to turn auto-mode on/off. Settings define what auto-mode does; the hotkey just switches it.
+- **⚡ AUTO indicator** — persistent status bar indicator shows when auto-mode is active.
+- **Auto-stop on manual click** — clicking a different segment automatically disengages auto-mode.
+
+
 
 ## Requirements
 
@@ -155,11 +162,35 @@ When **Debug mode** is enabled, every translation request logs both the outgoing
 | ✅ Final output | `content` | The translated text returned to OmegaT |
 | 📊 Token usage | `usage` | Prompt tokens, completion tokens, and total — useful for cost estimation |
 
+## Known Issues
+
+- **Context segments + ellipsis segments**: When **Context segments** is set greater than 0 and the current source segment consists only of punctuation/ellipsis (e.g., `......`), there is a small chance the API will return translations for the *next* few segments instead of the current one. This occurs because the model misidentifies the ellipsis as a scene break or continuation marker when context is provided.
+
+  ![Ellipsis segment misidentification example](docs/images/known-issue-context-segment.png)
+
+  **Workaround**: temporarily set Context segments to 0 when translating isolated punctuation segments, or manually correct the output after translation.
+
 ## Changelog
 
-### v1.4.1-dev (development fork)
-- **Debug mode** — new checkbox in settings to log raw API requests & responses for troubleshooting
-- Marked as development build (`-dev` suffix on version, `(Dev)` in plugin name)
+## Changelog
+
+### 1.5.1
+- **Fixed:** `commitAndLeave()` → `commitAndDeactivate()` + `nextUntranslatedEntry()` for correct auto-confirm advancement.
+- **Fixed:** Removed double `commitAndDeactivate()` that caused auto-mode to cancel after advancing.
+- **Fixed:** Glossary file encoding — switched from `FileWriter` (platform default) to `OutputStreamWriter` with UTF-8 to prevent `????` corruption.
+
+
+### 1.5.0
+- **New: Auto-glossary** — AI suggests terminology pairs with optional `;; comment` usage notes. Saved to `deepseek_auto_glossary.txt` in OmegaT tab-separated format.
+- **New: Self-review agent** — second API pass checks tag preservation, glossary consistency, accuracy, and fluency. Lower temperature (0.2) for precision.
+- **New: ⚡ AUTO status indicator** — persistent length-label indicator with timer refresh when auto-mode is active.
+- **New: Auto-stop on manual navigation** — clicking a different segment or switching files disengages auto-mode. Uses entry-number matching (no time window, works with slow API calls).
+- **New: Glossary deduplication** — in-memory + file-based dedup prevents duplicate entries across sessions.
+- **Changed: Master toggle** — `Ctrl+Shift+M` toggles `PROPERTY_AUTO_ACTIVE` instead of changing individual settings. Checkboxes define behavior; hotkey controls activation.
+
+
+### 1.4.1
+- Initial release with DeepSeek API integration, model selection, temperature control, glossary modes, and context segments.
 
 ### v1.4.1
 - Configurable context character limit (200/400/600/800/1000/No limit) instead of hardcoded 200

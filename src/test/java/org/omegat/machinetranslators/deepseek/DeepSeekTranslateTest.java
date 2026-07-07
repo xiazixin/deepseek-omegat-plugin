@@ -23,6 +23,8 @@ public class DeepSeekTranslateTest {
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_MODEL, "deepseek-v4-flash");
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_TEMPERATURE, "0.3");
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         String json = translate.createJsonRequest(new Language("EN"), new Language("DE"), "Hello world");
@@ -45,6 +47,8 @@ public class DeepSeekTranslateTest {
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_MODEL, "deepseek-v4-flash");
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_TEMPERATURE, "0.3");
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, true);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         String json = translate.createJsonRequest(new Language("EN"), new Language("DE"), "Hello world");
@@ -82,6 +86,8 @@ public class DeepSeekTranslateTest {
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_GLOSSARY_MODE,
                 DeepSeekTranslate.GLOSSARY_MODE_NONE);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         String json = translate.createJsonRequest(new Language("EN"), new Language("DE"), "Hello world");
@@ -109,6 +115,8 @@ public class DeepSeekTranslateTest {
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_GLOSSARY_MODE,
                 DeepSeekTranslate.GLOSSARY_MODE_REFERENCE);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         // Should not throw — when no project is open, glossary is simply skipped
@@ -137,6 +145,8 @@ public class DeepSeekTranslateTest {
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_GLOSSARY_MODE,
                 DeepSeekTranslate.GLOSSARY_MODE_STRICT);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         // Should not throw — when no project is open, glossary is simply skipped
@@ -163,6 +173,8 @@ public class DeepSeekTranslateTest {
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_TEMPERATURE, "0.3");
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_CONTEXT_SEGMENTS, 2);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         // Should not throw — when no project is open, context is simply skipped
