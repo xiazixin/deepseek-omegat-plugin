@@ -765,11 +765,11 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         return Preferences.isPreference(PROPERTY_DEBUG_MODE);
     }
 
-    private boolean isAutoInsert() {
+    static boolean isAutoInsert() {
         return Preferences.isPreference(PROPERTY_AUTO_INSERT);
     }
 
-    private boolean isAutoConfirm() {
+    static boolean isAutoConfirm() {
         return Preferences.isPreference(PROPERTY_AUTO_CONFIRM);
     }
 
@@ -781,11 +781,11 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         return Preferences.isPreference(PROPERTY_AUTO_ACTIVE);
     }
 
-    private boolean isAutoGlossary() {
+    static boolean isAutoGlossary() {
         return Preferences.isPreference(PROPERTY_AUTO_GLOSSARY);
     }
 
-    private boolean isSelfReview() {
+    static boolean isSelfReview() {
         return Preferences.isPreference(PROPERTY_SELF_REVIEW);
     }
 

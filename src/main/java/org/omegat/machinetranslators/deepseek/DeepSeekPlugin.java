@@ -58,7 +58,7 @@ public final class DeepSeekPlugin {
         // Remove the DeepSeek Function menu from the menu bar
         SwingUtilities.invokeLater(() -> {
             try {
-                JMenuBar menuBar = Core.getMainWindow().getMainMenu();
+                JMenuBar menuBar = (JMenuBar) Core.getMainWindow().getMainMenu();
                 if (menuBar != null && deepSeekMenu != null) {
                     menuBar.remove(deepSeekMenu);
                     menuBar.revalidate();
@@ -76,7 +76,7 @@ public final class DeepSeekPlugin {
     private static void registerDeepSeekMenu() {
         SwingUtilities.invokeLater(() -> {
             try {
-                JMenuBar menuBar = Core.getMainWindow().getMainMenu();
+                JMenuBar menuBar = (JMenuBar) Core.getMainWindow().getMainMenu();
                 if (menuBar == null) return;
 
                 // Avoid duplicate registration

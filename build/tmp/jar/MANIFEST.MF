@@ -4,9 +4,9 @@ OmegaT-Plugins: org.omegat.machinetranslators.deepseek.DeepSeekPlugin
 Plugin-Author: XIA ZIXIN
 Plugin-Description: OmegaT machine translation connector for the DeepSee
  k API.
-Plugin-Version: 1.4.1-dev
+Plugin-Version: 1.5.1
 Plugin-Link: https://github.com/xiazixin/deepseek-omegat-plugin
 Plugin-Category: machinetranslator
 Created-By: 26.0.1 (Oracle Corporation)
-Plugin-Date: 2026-06-29T07:37:23+0800
+Plugin-Date: 2026-07-07T23:12:23+0800
 
