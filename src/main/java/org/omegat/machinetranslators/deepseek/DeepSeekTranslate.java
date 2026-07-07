@@ -558,6 +558,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                 Preferences.setPreference(PROPERTY_AUTO_GLOSSARY, autoGlossaryCheckBox.isSelected());
                 Preferences.setPreference(PROPERTY_SELF_REVIEW, selfReviewCheckBox.isSelected());
                 clearCache();
+                DeepSeekPlugin.refreshMenuState();
             }
         };
 
