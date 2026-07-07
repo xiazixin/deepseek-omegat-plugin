@@ -9,6 +9,7 @@ This plugin adds DeepSeek as a machine translation provider in OmegaT.
 - Configurable model selection, temperature, and dynamic temperature.
 - **Glossary support** — automatically reads OmegaT project glossaries and passes matching entries (with comments) to the AI as translation hints.
 - **Context segments** — optionally sends surrounding segments (above/below) to the AI for better continuity and tone consistency across sentences.
+- **Debug mode** — when enabled, logs the full JSON request and response to OmegaT's log for troubleshooting.
 - **Auto-insert** — when active, automatically fills the target segment with the machine translation result, eliminating the need to press Ctrl+M for every segment.
 - **Auto-confirm** — when active, also commits the translation and advances to the next segment (use with caution).
 - **Auto-glossary** — the AI suggests key terminology pairs alongside each translation, including optional usage comments. Entries saved to `deepseek_auto_glossary.txt`.
@@ -58,6 +59,7 @@ Open OmegaT's machine translation settings and configure the DeepSeek engine.
 | Glossary | None | **None** — glossary disabled. **Reference** — glossary entries are sent as hints; the AI uses judgment and won't blindly override compound terms (e.g. `白金色` stays `platinum color` even with `金色 → gold color` in the glossary). **Strict** — glossary entries must be used exactly. |
 | Context segments | 0 | Number of surrounding segments (above and below) to include as context. 0 = disabled, up to 3. Helps AI maintain narrative continuity and tone. |
 | Context char limit | 400 | Max characters per context segment before truncation. Options: 200, 400, 600, 800, 1000, or No limit. Adjust based on your segment size. |
+| Debug mode | Off | When enabled, logs the full JSON request sent to DeepSeek and the full JSON response to OmegaT's log (`[DeepSeek Debug] >>>` / `<<<`). Useful for troubleshooting prompts, glossary injection, and API errors. |
 
 You can also override settings with system properties:
 
@@ -94,6 +96,71 @@ Context segments are truncated to the configured character limit (200–1000, or
 - In **Reference** glossary mode, glossary entries are sent as contextual hints — the AI is instructed to use judgment and not blindly apply partial matches (e.g., compound words containing a glossary term won't be incorrectly split).
 - Context segments are looked up from the project's ordered entry list using sequential position tracking for efficiency.
 - When no OmegaT project is open, glossary and context features are silently skipped with no errors.
+- Debug mode logs can be found in OmegaT's log viewer. Look for `[DeepSeek Debug]` prefixed entries.
+
+## Debug Output
+
+When **Debug mode** is enabled, every translation request logs both the outgoing JSON and the incoming response. Here is an annotated example with **Glossary: Reference**, **Context segments: 3**, **Context limit: No limit**, and **Model: deepseek-v4-flash**:
+
+### Request (what is sent to DeepSeek)
+
+```json
+{
+  "messages": [
+    {
+      "content": "You are a professional translation engine for OmegaT. Translate from zh-CN to en-US. ...\n\nSurrounding context for reference (DO NOT translate these — only the current segment):\n[Above] 不过和第一次相比，这次伊恩就看不见自己身上的黑气。  →  However, compared to the first time, this time Ian could not see the black mist on himself. /// ...\n[Below] 黑曜石的刀刃边缘，有一层暗红的色泽... /// ...\n\nReference glossary — use judgment...:\n- 伊恩 → Ian  [Name of main character]\n伊恩认识那小刀。",
+      "role": "system"
+    },
+    {
+      "content": "伊恩认识那小刀。",
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-v4-flash",
+  "stream": false
+}
+```
+
+**Key:**
+
+| Part | Label in JSON | Description |
+|---|---|---|
+| 🔶 Context above | `[Above] … /// …` | Up to N segments *above* the current one, each shown as `SOURCE  →  TRANSLATION` |
+| 🔸 Context below | `[Below] … /// …` | Up to N segments *below* the current one (source text only) |
+| 🟢 Glossary | `- source → target [comment]` | Matching glossary entries from the project's glossary folder |
+| 🔴 Current segment | `"content":"…","role":"user"` | The actual segment that needs to be translated |
+
+### Response (what DeepSeek returns)
+
+```json
+{
+  "id": "...",
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "Ian recognized the knife.",
+        "reasoning_content": "We need to translate the Chinese sentence... '认识' can mean 'recognize' or 'know'. Given context of Ian seeing the knife, 'recognized' fits better..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 346,
+    "completion_tokens": 170,
+    "total_tokens": 516
+  }
+}
+```
+
+**Key:**
+
+| Part | Field | Description |
+|---|---|---|
+| 🔵 Reasoning | `reasoning_content` | The AI's internal chain-of-thought — how it arrived at the translation (DeepSeek V4 Pro/Flash reasoning models only) |
+| ✅ Final output | `content` | The translated text returned to OmegaT |
+| 📊 Token usage | `usage` | Prompt tokens, completion tokens, and total — useful for cost estimation |
 
 ## Known Issues
 

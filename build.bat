@@ -2,7 +2,7 @@
 REM Build script for DeepSeek OmegaT Plugin (Windows)
 REM This script builds the plugin using Gradle
 
-echo Building DeepSeek OmegaT Plugin...
+echo Building DeepSeek OmegaT Plugin (Dev)...
 echo.
 
 REM Check if gradlew.bat exists

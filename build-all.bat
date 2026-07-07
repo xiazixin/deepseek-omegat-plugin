@@ -3,7 +3,7 @@ REM Build All script for DeepSeek OmegaT Plugin (Windows)
 REM This script performs a complete build: clean, build, and test
 
 echo ========================================
-echo DeepSeek OmegaT Plugin - Complete Build
+echo DeepSeek OmegaT Plugin (Dev) - Complete Build
 echo ========================================
 echo.
 
