@@ -48,6 +48,15 @@ bin/
 .DS_Store
 
 # AI related files
+
+# Node
+node_modules/
+package-lock.json
+
+# Build artifacts
+*.b64
+*.clean
+*.patch
 AGENTS.md
 .codex/
 .claude/
