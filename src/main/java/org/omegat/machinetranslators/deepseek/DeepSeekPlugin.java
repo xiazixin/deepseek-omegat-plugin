@@ -180,6 +180,8 @@ public final class DeepSeekPlugin {
                 if (entry == null) return;
                 String trans = editor.getCurrentTranslation();
                 if (trans != null && !trans.trim().isEmpty()) return;
+                DeepSeekTranslate.lastAutoEntryNum = entry.entryNum();
+                DeepSeekTranslate.expectingAutoActivation = false;
                 editor.activateEntry();
             } catch (Exception ignored) { }
         });
