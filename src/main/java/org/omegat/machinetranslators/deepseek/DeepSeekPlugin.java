@@ -101,16 +101,40 @@ public final class DeepSeekPlugin {
     /**
      * Registers a global hotkey (Ctrl+Shift+M) that toggles the
      * auto-insert / auto-confirm feature on and off.
+     * <p>
+     * Tracks key-release state to ignore OS auto-repeat events —
+     * without this guard, holding the keys causes rapid oscillation
+     * that floods the EDT and makes the editor unresponsive.
      */
     private static void registerHotkey() {
         hotkeyDispatcher = new java.awt.KeyEventDispatcher() {
+            private boolean mMKeyReleased = true;
+            private long lastToggleMs = 0;
+
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
+                // Track M-key release so we ignore auto-repeat KEY_PRESSED events
+                if (e.getID() == KeyEvent.KEY_RELEASED
+                        && e.getKeyCode() == KeyEvent.VK_M) {
+                    mMKeyReleased = true;
+                    return false;
+                }
                 if (e.getID() == KeyEvent.KEY_PRESSED
                         && e.isControlDown()
                         && e.isShiftDown()
                         && !e.isAltDown()
                         && e.getKeyCode() == KeyEvent.VK_M) {
+                    // Ignore OS auto-repeat: only react on first press after a release
+                    if (!mMKeyReleased) {
+                        return true; // consume but don't act
+                    }
+                    // Debounce: minimum 400ms between toggles (belt-and-suspenders)
+                    long now = System.currentTimeMillis();
+                    if (now - lastToggleMs < 400) {
+                        return true;
+                    }
+                    mMKeyReleased = false;
+                    lastToggleMs = now;
                     toggleAutoInsert();
                     return true;
                 }
@@ -132,7 +156,6 @@ public final class DeepSeekPlugin {
             if (newState) {
                 Core.getMainWindow().showLengthMessage("⚡ AUTO");
                 startIndicator();
-                // Trigger translation for the current segment if already loaded
                 retriggerCurrentSegment();
             } else {
                 Core.getMainWindow().showLengthMessage("");
@@ -157,10 +180,6 @@ public final class DeepSeekPlugin {
                 if (entry == null) return;
                 String trans = editor.getCurrentTranslation();
                 if (trans != null && !trans.trim().isEmpty()) return;
-                // Re-activate to trigger MT re-fetch; the entry listener
-                // will see this as the same lastAutoEntryNum and ignore it
-                DeepSeekTranslate.lastAutoEntryNum = entry.entryNum();
-                DeepSeekTranslate.expectingAutoActivation = false;
                 editor.activateEntry();
             } catch (Exception ignored) { }
         });

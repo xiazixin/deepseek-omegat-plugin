@@ -12,6 +12,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.LinkedHashMap;
@@ -390,6 +391,11 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         return msg.toString();
     }
 
+    /** Throttle: minimum ms between auto-confirm advances to keep the EDT responsive. */
+    private static final int AUTO_CONFIRM_THROTTLE_MS = 600;
+    /** Timestamp of the last auto-confirm navigation, for throttling. */
+    private long lastAutoConfirmMs = 0;
+
     /**
      * Automatically inserts the translated text into the current segment's target field.
      * If auto-confirm is also enabled, advances to the next untranslated segment
@@ -418,10 +424,30 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                 DeepSeekPlugin.startIndicator();
             }
             if (isAutoConfirm()) {
-                // Set flag so the entry listener identifies this as auto-navigation
-                expectingAutoActivation = true;
-                // nextUntranslatedEntry internally calls commitAndDeactivate before advancing
-                editor.nextUntranslatedEntry();
+                // Throttle the advance without blocking the EDT.
+                long now = System.currentTimeMillis();
+                long elapsed = now - lastAutoConfirmMs;
+                int delay = (int) Math.max(0, AUTO_CONFIRM_THROTTLE_MS - elapsed);
+                int currentEntryNum = currentEntry.entryNum();
+                javax.swing.Timer advanceTimer = new javax.swing.Timer(delay, e -> {
+                    try {
+                        IEditor activeEditor = Core.getEditor();
+                        if (activeEditor == null) return;
+                        SourceTextEntry activeEntry = activeEditor.getCurrentEntry();
+                        if (activeEntry == null || activeEntry.entryNum() != currentEntryNum) {
+                            return;
+                        }
+                        lastAutoConfirmMs = System.currentTimeMillis();
+                        // Set flag so the entry listener identifies this as auto-navigation
+                        expectingAutoActivation = true;
+                        // nextUntranslatedEntry internally calls commitAndDeactivate before advancing
+                        activeEditor.nextUntranslatedEntry();
+                    } finally {
+                        ((javax.swing.Timer) e.getSource()).stop();
+                    }
+                });
+                advanceTimer.setRepeats(false);
+                advanceTimer.start();
             }
         } catch (Exception e) {
             Log.log(e);
@@ -787,14 +813,18 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private String contextLastProjectPath = null;
     private List<String> contextCachedSources = null;
 
-    /** Caches this plugin's own translation output as a fallback for context continuity. */
-    private final Map<String, String> translationCache = new LinkedHashMap<String, String>(128, 0.75f, true) {
-        private static final int MAX_ENTRIES = 512;
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
-            return size() > MAX_ENTRIES;
-        }
-    };
+    /** Caches this plugin's own translation output as a fallback for context continuity.
+     *  Wrapped with synchronizedMap because LinkedHashMap with access-order
+     *  is NOT thread-safe — concurrent get() calls can corrupt the internal
+     *  doubly-linked list and cause infinite loops. */
+    private final Map<String, String> translationCache = Collections.synchronizedMap(
+        new LinkedHashMap<String, String>(128, 0.75f, true) {
+            private static final int MAX_ENTRIES = 512;
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                return size() > MAX_ENTRIES;
+            }
+        });
 
     /** Cached map of source text → stored translation from OmegaT's project data.
      *  This reflects the user's actual (possibly edited) translations, rebuilt
