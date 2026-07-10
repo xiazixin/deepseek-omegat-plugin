@@ -1,4 +1,4 @@
-# DeepSeek OmegaT Plugin ![version](https://img.shields.io/badge/version-1.5.1-blue)
+# DeepSeek OmegaT Plugin ![version](https://img.shields.io/badge/version-1.5.3-blue)
 
 This plugin adds DeepSeek as a machine translation provider in OmegaT.
 
@@ -15,7 +15,7 @@ This plugin adds DeepSeek as a machine translation provider in OmegaT.
 - **Self-review agent** — a second AI pass reviews each translation for tag preservation, glossary consistency, accuracy, and fluency — correcting errors automatically.
 - **Hotkey toggle** — press **Ctrl+Shift+M** anytime to turn auto-mode on/off. Settings define what auto-mode does; the hotkey just switches it.
 - **⚡ AUTO indicator** — persistent status bar indicator shows when auto-mode is active.
-- **Auto-stop on manual click** — clicking a different segment automatically disengages auto-mode.
+
 
 
 
@@ -105,7 +105,15 @@ Context segments are truncated to the configured character limit (200–1000, or
 
 ## Changelog
 
-## Changelog
+### 1.5.3
+- **Fixed: Editor freeze** — `translationCache` (LinkedHashMap with access-order) was not thread-safe. Concurrent `get()`/`put()` from multiple OmegaT worker threads corrupted the internal linked list, causing infinite loops. Wrapped with `Collections.synchronizedMap()`.
+- **Changed: Hotkey debouncing** — Ctrl+Shift+M now ignores OS auto-repeat events and enforces a 400ms minimum between toggles, preventing EDT flooding when keys are held down.
+- **Removed: Auto-stop on manual click** — the entry-listener state machine (`expectingAutoActivation`/`lastAutoEntryNum`) was removed because it caused EDT re-entrancy issues. Use Ctrl+Shift+M to stop auto-mode instead.
+
+### 1.5.2
+- **Fixed: Cached translation insertion** — when auto-mode is toggled ON via Ctrl+Shift+M, the already-generated MT result is inserted directly from cache (no redundant API call).
+- **Fixed: Auto-confirm throttle** — advances are now spaced at least 600ms apart via a `javax.swing.Timer`, preventing EDT flooding during rapid auto-translation.
+- **Changed: Simplified architecture** — removed the complex entry-listener and state-machine that caused EDT re-entrancy issues on some OmegaT versions.
 
 ### 1.5.1
 - **Fixed:** `commitAndLeave()` → `commitAndDeactivate()` + `nextUntranslatedEntry()` for correct auto-confirm advancement.

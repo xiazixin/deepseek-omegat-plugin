@@ -7,9 +7,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import org.omegat.core.Core;
-import org.omegat.core.CoreEvents;
 import org.omegat.core.data.SourceTextEntry;
-import org.omegat.core.events.IEntryEventListener;
 import org.omegat.gui.editor.IEditor;
 import org.omegat.util.Log;
 import org.omegat.util.Preferences;
@@ -18,7 +16,6 @@ public final class DeepSeekPlugin {
 
     private static java.awt.KeyEventDispatcher hotkeyDispatcher;
     private static Timer indicatorTimer;
-    private static IEntryEventListener entryListener;
 
     private DeepSeekPlugin() {
     }
@@ -26,7 +23,6 @@ public final class DeepSeekPlugin {
     public static void loadPlugins() {
         Core.registerMachineTranslationClass(DeepSeekTranslate.class);
         registerHotkey();
-        registerEntryListener();
         // Restore indicator if auto-mode was left on from a previous session
         if (DeepSeekTranslate.isAutoActive()) {
             startIndicator();
@@ -40,62 +36,6 @@ public final class DeepSeekPlugin {
             hotkeyDispatcher = null;
         }
         stopIndicator();
-        if (entryListener != null) {
-            CoreEvents.unregisterEntryEventListener(entryListener);
-            entryListener = null;
-        }
-    }
-
-    /**
-     * Registers a listener that stops auto-mode when the user manually
-     * clicks or navigates to a different segment. Uses entry-number
-     * matching: when auto-navigation happens, the expected entry number
-     * is recorded; any activation to a different entry is manual.
-     */
-    private static void registerEntryListener() {
-        entryListener = new IEntryEventListener() {
-            @Override
-            public void onNewFile(String activeFileName) {
-                // Only stop if this file change was NOT triggered by auto-navigation
-                if (DeepSeekTranslate.isAutoActive()
-                        && !DeepSeekTranslate.expectingAutoActivation) {
-                    stopAutoMode("file changed");
-                }
-            }
-
-            @Override
-            public void onEntryActivated(SourceTextEntry newEntry) {
-                if (!DeepSeekTranslate.isAutoActive()) return;
-
-                if (DeepSeekTranslate.expectingAutoActivation) {
-                    // This activation was triggered by auto-navigation —
-                    // record the entry number and clear the flag
-                    DeepSeekTranslate.lastAutoEntryNum = newEntry.entryNum();
-                    DeepSeekTranslate.expectingAutoActivation = false;
-                } else if (newEntry.entryNum() != DeepSeekTranslate.lastAutoEntryNum) {
-                    // Activation to a different entry than the last auto-navigated one
-                    // → user clicked manually
-                    stopAutoMode("manual navigation");
-                }
-                // else: same entry number — OmegaT re-activating the auto-navigated
-                // entry (e.g., after translate() completes) — ignore
-            }
-        };
-        CoreEvents.registerEntryEventListener(entryListener);
-    }
-
-    /**
-     * Stops auto-mode and shows a notification in the status bar.
-     */
-    private static void stopAutoMode(String reason) {
-        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_ACTIVE, false);
-        stopIndicator();
-        String msg = "DeepSeek Auto: OFF (" + reason + ")";
-        Log.log(msg);
-        try {
-            Core.getMainWindow().showProgressMessage(msg);
-            Core.getMainWindow().showLengthMessage("");
-        } catch (Exception ignored) { }
     }
 
     /**
@@ -168,8 +108,10 @@ public final class DeepSeekPlugin {
 
     /**
      * When auto-mode is toggled ON, the current segment may already have a
-     * translation loaded in the MT pane. Re-activate the entry so OmegaT
-     * re-fetches the translation, which then gets auto-inserted.
+     * translation in the MT pane (OmegaT auto-fetches MT on navigation).
+     * We check the shared translation cache — if a cached result exists,
+     * it is inserted directly.  If auto-confirm is enabled, a throttled
+     * advance to the next untranslated segment is also scheduled.
      */
     private static void retriggerCurrentSegment() {
         SwingUtilities.invokeLater(() -> {
@@ -180,9 +122,16 @@ public final class DeepSeekPlugin {
                 if (entry == null) return;
                 String trans = editor.getCurrentTranslation();
                 if (trans != null && !trans.trim().isEmpty()) return;
-                DeepSeekTranslate.lastAutoEntryNum = entry.entryNum();
-                DeepSeekTranslate.expectingAutoActivation = false;
-                editor.activateEntry();
+
+                // Only insert from cache — never call activateEntry()
+                String sourceText = entry.getSrcText();
+                String cached = DeepSeekTranslate.lastTranslationBySource.get(sourceText);
+                if (cached != null && !cached.isEmpty()) {
+                    editor.replaceEditText(cached, "DeepSeek");
+                    if (DeepSeekTranslate.isAutoConfirmEnabled()) {
+                        DeepSeekTranslate.scheduleAdvance(editor, entry);
+                    }
+                }
             } catch (Exception ignored) { }
         });
     }

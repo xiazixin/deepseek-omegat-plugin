@@ -169,6 +169,8 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         // Cache this translation so future segments can reference it for continuity
         if (translated != null && !translated.isEmpty()) {
             translationCache.put(sourceText, translated);
+            // Also cache for instant insertion when auto-mode is toggled on
+            lastTranslationBySource.put(sourceText, translated);
         }
 
         // Auto-insert the translation into the editor if the master toggle is active
@@ -391,15 +393,42 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         return msg.toString();
     }
 
-    /** Throttle: minimum ms between auto-confirm advances to keep the EDT responsive. */
+    /** Minimum ms between auto-confirm advances to keep the EDT responsive. */
     private static final int AUTO_CONFIRM_THROTTLE_MS = 600;
     /** Timestamp of the last auto-confirm navigation, for throttling. */
-    private long lastAutoConfirmMs = 0;
+    private static volatile long lastAutoConfirmMs = 0;
 
     /**
-     * Automatically inserts the translated text into the current segment's target field.
-     * If auto-confirm is also enabled, advances to the next untranslated segment
-     * (nextUntranslatedEntry handles both saving and advancing internally).
+     * Schedules a throttled advance to the next untranslated entry on the EDT.
+     * Enforces at least {@link #AUTO_CONFIRM_THROTTLE_MS} ms between advances
+     * so the UI thread never gets flooded by rapid-fire navigations.
+     */
+    static void scheduleAdvance(IEditor editor, SourceTextEntry currentEntry) {
+        long now = System.currentTimeMillis();
+        long elapsed = now - lastAutoConfirmMs;
+        int delay = (int) Math.max(0, AUTO_CONFIRM_THROTTLE_MS - elapsed);
+        int currentEntryNum = currentEntry.entryNum();
+        javax.swing.Timer advanceTimer = new javax.swing.Timer(delay, e -> {
+            try {
+                if (!isAutoActive()) return;
+                IEditor activeEditor = Core.getEditor();
+                if (activeEditor == null) return;
+                SourceTextEntry activeEntry = activeEditor.getCurrentEntry();
+                if (activeEntry == null || activeEntry.entryNum() != currentEntryNum) return;
+                lastAutoConfirmMs = System.currentTimeMillis();
+                activeEditor.nextUntranslatedEntry();
+            } finally {
+                ((javax.swing.Timer) e.getSource()).stop();
+            }
+        });
+        advanceTimer.setRepeats(false);
+        advanceTimer.start();
+    }
+
+    /**
+     * Automatically inserts the translated text into the current segment's
+     * target field.  If auto-confirm is also enabled, schedules a throttled
+     * advance to the next untranslated segment.
      * <p>
      * Must be called from the Swing UI thread.
      */
@@ -424,30 +453,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                 DeepSeekPlugin.startIndicator();
             }
             if (isAutoConfirm()) {
-                // Throttle the advance without blocking the EDT.
-                long now = System.currentTimeMillis();
-                long elapsed = now - lastAutoConfirmMs;
-                int delay = (int) Math.max(0, AUTO_CONFIRM_THROTTLE_MS - elapsed);
-                int currentEntryNum = currentEntry.entryNum();
-                javax.swing.Timer advanceTimer = new javax.swing.Timer(delay, e -> {
-                    try {
-                        IEditor activeEditor = Core.getEditor();
-                        if (activeEditor == null) return;
-                        SourceTextEntry activeEntry = activeEditor.getCurrentEntry();
-                        if (activeEntry == null || activeEntry.entryNum() != currentEntryNum) {
-                            return;
-                        }
-                        lastAutoConfirmMs = System.currentTimeMillis();
-                        // Set flag so the entry listener identifies this as auto-navigation
-                        expectingAutoActivation = true;
-                        // nextUntranslatedEntry internally calls commitAndDeactivate before advancing
-                        activeEditor.nextUntranslatedEntry();
-                    } finally {
-                        ((javax.swing.Timer) e.getSource()).stop();
-                    }
-                });
-                advanceTimer.setRepeats(false);
-                advanceTimer.start();
+                scheduleAdvance(editor, currentEntry);
             }
         } catch (Exception e) {
             Log.log(e);
@@ -762,6 +768,10 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         return Preferences.isPreference(PROPERTY_AUTO_INSERT);
     }
 
+    static boolean isAutoConfirmEnabled() {
+        return Preferences.isPreference(PROPERTY_AUTO_CONFIRM);
+    }
+
     private boolean isAutoConfirm() {
         return Preferences.isPreference(PROPERTY_AUTO_CONFIRM);
     }
@@ -781,21 +791,6 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private boolean isSelfReview() {
         return Preferences.isPreference(PROPERTY_SELF_REVIEW);
     }
-
-    /**
-     * Flag set true just before auto-navigation (nextUntranslatedEntry).
-     * The entry listener uses this to distinguish auto-navigation from
-     * manual clicks — it's set on the Swing thread before navigating
-     * and cleared by the listener when the expected activation fires.
-     */
-    static volatile boolean expectingAutoActivation = false;
-
-    /**
-     * The entry number that auto-mode last navigated to. Used by the
-     * entry listener to detect manual navigation (any activation to
-     * a different entry number = user clicked somewhere else).
-     */
-    static volatile int lastAutoEntryNum = -1;
 
     private static int truncationToIndex(int value) {
         for (int i = 0; i < CONTEXT_TRUNCATION_OPTIONS.length; i++) {
@@ -820,6 +815,19 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private final Map<String, String> translationCache = Collections.synchronizedMap(
         new LinkedHashMap<String, String>(128, 0.75f, true) {
             private static final int MAX_ENTRIES = 512;
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                return size() > MAX_ENTRIES;
+            }
+        });
+
+    /** Caches the most recent translation for each source text so that when
+     *  auto-mode is toggled ON (Ctrl+Shift+M), the already-generated MT result
+     *  can be inserted directly — avoiding a redundant API call.  LRU eviction
+     *  keeps memory bounded (16 entries). */
+    static final Map<String, String> lastTranslationBySource =
+        Collections.synchronizedMap(new LinkedHashMap<String, String>(16, 0.75f, true) {
+            private static final int MAX_ENTRIES = 16;
             @Override
             protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
                 return size() > MAX_ENTRIES;
