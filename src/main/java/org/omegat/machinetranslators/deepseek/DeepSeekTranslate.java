@@ -128,6 +128,8 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         }
 
         String request = createJsonRequest(sLang, tLang, sourceText);
+        // Captured for the DeepSeek menu's "Current prompts" viewer
+        lastRequestBody = request;
         Map<String, String> headers = new TreeMap<>();
         headers.put("Authorization", "Bearer " + apiKey);
 
@@ -137,6 +139,10 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         } catch (HttpConnectionUtils.ResponseError e) {
             throw new MachineTranslateError(extractErrorMessage(e.body));
         }
+
+        // Raw log (DeepSeek menu): appends the untouched response body to
+        // deepseek_raw.log when enabled — no-op otherwise
+        RawResponseLogger.log(response);
 
         if (response == null) {
             return null;
@@ -221,8 +227,12 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     /**
      * Parses glossary entries from the AI response block and writes them
      * to the project's glossary folder in OmegaT's tab-separated format.
+     * <p>
+     * Deduplicates against ALL glossary files in the folder (including the
+     * user's own glossaries), re-read on every save so entries added
+     * externally mid-session are respected too.
      */
-    private void saveGlossaryEntries(String sourceText, String glossaryBlock) {
+    private synchronized void saveGlossaryEntries(String sourceText, String glossaryBlock) {
         try {
             if (Core.getProject() == null) return;
             String glossaryRoot = Core.getProject().getProjectProperties().getGlossaryRoot();
@@ -233,25 +243,11 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
 
             File autoFile = new File(glossaryDir, "deepseek_auto_glossary.txt");
 
-            // Load existing entries from file on first use (prevents cross-session duplicates)
-            if (!glossaryKeysLoaded && autoFile.isFile()) {
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(new FileInputStream(autoFile), StandardCharsets.UTF_8))) {
-                    String existingLine;
-                    while ((existingLine = reader.readLine()) != null) {
-                        existingLine = existingLine.trim();
-                        if (existingLine.isEmpty()) continue;
-                        String[] cols = existingLine.split("\t", 2);
-                        if (cols.length >= 2) {
-                            writtenGlossaryKeys.add(
-                                    cols[0].trim().toLowerCase() + "\t" + cols[1].trim().toLowerCase());
-                        }
-                    }
-                } catch (Exception e) {
-                    Log.log(e);
-                }
+            // Build the dedup set from every glossary file in the folder
+            java.util.Set<String> existingKeys = new java.util.HashSet<>();
+            for (GlossaryEntry existing : readGlossaryEntries()) {
+                existingKeys.add(existing.source.toLowerCase() + "\t" + existing.target.toLowerCase());
             }
-            glossaryKeysLoaded = true;
 
             String[] lines = glossaryBlock.split("\\n");
             int added = 0;
@@ -279,9 +275,10 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                     if (src.equalsIgnoreCase(tgt)) continue;
                     if (sourceText.equals(src)) continue;
 
-                    // Deduplicate: skip if this source→target pair was already written
+                    // Deduplicate: skip if this source→target pair already exists
+                    // in any glossary file (or appeared earlier in this block)
                     String dedupKey = src.toLowerCase() + "\t" + tgt.toLowerCase();
-                    if (!writtenGlossaryKeys.add(dedupKey)) continue;
+                    if (!existingKeys.add(dedupKey)) continue;
 
                     // Write in OmegaT glossary format: source\ttarget\tcomment
                     if (comment.isEmpty()) {
@@ -821,6 +818,11 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             }
         });
 
+    /** The most recent request body sent to the DeepSeek API, captured so the
+     *  DeepSeek menu's "Current prompts" viewer can display it. Written on
+     *  translation worker threads, read on the EDT. */
+    static volatile String lastRequestBody;
+
     /** Caches the most recent translation for each source text so that when
      *  auto-mode is toggled ON (Ctrl+Shift+M), the already-generated MT result
      *  can be inserted directly — avoiding a redundant API call.  LRU eviction
@@ -838,11 +840,6 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
      *  This reflects the user's actual (possibly edited) translations, rebuilt
      *  when the project cache is refreshed. */
     private Map<String, String> contextStoredTranslations = null;
-
-    /** Tracks auto-glossary entries already written to prevent duplicates. */
-    private final java.util.Set<String> writtenGlossaryKeys = new java.util.HashSet<>();
-    /** Whether the existing glossary file has been loaded into writtenGlossaryKeys. */
-    private boolean glossaryKeysLoaded = false;
 
     private static int temperatureToSlider(double temperature) {
         return (int) Math.round(temperature * 10.0);
@@ -1030,9 +1027,12 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         if (mode == GLOSSARY_MODE_STRICT) {
             sb.append("\n\nStrict glossary — you MUST use these exact translations:\n");
         } else {
-            sb.append("\n\nReference glossary — use judgment. Do NOT apply entries blindly "
-                + "(e.g., if glossary has \"金色 → gold color\" and the text contains "
-                + "\"白金色\", still translate \"白金色\" as \"platinum color\"):\n");
+            sb.append("\n\nReference glossary — follow these translations by default. "
+                + "Override an entry ONLY when using it literally would cause a factual, "
+                + "grammatical, or stylistic error (e.g., if the glossary has "
+                + "\"金色 → gold color\" and the text contains \"白金色\", still translate "
+                + "\"白金色\" as \"platinum color\"). "
+                + "Never replace a glossary translation solely for preference or variety:\n");
         }
 
         for (GlossaryEntry e : entries) {

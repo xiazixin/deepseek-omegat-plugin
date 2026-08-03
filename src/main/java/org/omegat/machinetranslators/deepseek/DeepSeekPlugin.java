@@ -7,7 +7,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import org.omegat.core.Core;
+import org.omegat.core.CoreEvents;
 import org.omegat.core.data.SourceTextEntry;
+import org.omegat.core.events.IApplicationEventListener;
 import org.omegat.gui.editor.IEditor;
 import org.omegat.util.Log;
 import org.omegat.util.Preferences;
@@ -16,6 +18,7 @@ public final class DeepSeekPlugin {
 
     private static java.awt.KeyEventDispatcher hotkeyDispatcher;
     private static Timer indicatorTimer;
+    private static IApplicationEventListener appEventListener;
 
     private DeepSeekPlugin() {
     }
@@ -23,6 +26,19 @@ public final class DeepSeekPlugin {
     public static void loadPlugins() {
         Core.registerMachineTranslationClass(DeepSeekTranslate.class);
         registerHotkey();
+        // Plugins load BEFORE the main window exists, so the menu can only be
+        // added once OmegaT signals that all components are created
+        appEventListener = new IApplicationEventListener() {
+            @Override
+            public void onApplicationStartup() {
+                DeepSeekMenu.register();
+            }
+
+            @Override
+            public void onApplicationShutdown() {
+            }
+        };
+        CoreEvents.registerApplicationEventListener(appEventListener);
         // Restore indicator if auto-mode was left on from a previous session
         if (DeepSeekTranslate.isAutoActive()) {
             startIndicator();
@@ -35,7 +51,12 @@ public final class DeepSeekPlugin {
                     .removeKeyEventDispatcher(hotkeyDispatcher);
             hotkeyDispatcher = null;
         }
+        if (appEventListener != null) {
+            CoreEvents.unregisterApplicationEventListener(appEventListener);
+            appEventListener = null;
+        }
         stopIndicator();
+        DeepSeekMenu.unregister();
     }
 
     /**
