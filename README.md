@@ -1,4 +1,4 @@
-# DeepSeek OmegaT Plugin ![version](https://img.shields.io/badge/version-1.5.3-blue)
+# DeepSeek OmegaT Plugin ![version](https://img.shields.io/badge/version-1.6.0-blue)
 
 This plugin adds DeepSeek as a machine translation provider in OmegaT.
 
@@ -104,6 +104,13 @@ Context segments are truncated to the configured character limit (200–1000, or
   **Workaround**: temporarily set Context segments to 0 when translating isolated punctuation segments, or manually correct the output after translation.
 
 ## Changelog
+
+### 1.6.0
+- **New: DeepSeek top menu** — a dedicated top-level menu in the OmegaT menu bar for additional plugin functions. (Currently for trobleshooting function So I dont have to make an independent dev build like before.)
+- **New: Raw response log** — menu toggle that appends every raw DeepSeek API response body (untouched JSON) to `deepseek_raw.log` in the OmegaT configuration folder. The file contains only raw responses; the menu also offers open/clear. (the build in log is too hard to read for me)
+- **New: Current prompts viewer** — menu item showing the most recent request sent to the DeepSeek API (parameters, system prompt, and user message) with real line breaks in a scrollable dialog. (still mostly dev funtions, but it can give you an clear picture as well)
+- **Changed: Reference glossary mode** — entries are now followed by default; the AI may override an entry only when using it literally would cause a factual, grammatical, or stylistic error — never for preference or variety. (glossary reference mode should be stricter)
+- **Fixed: Auto-glossary dedup** — now checks all glossary files in the project's glossary folder (not just `deepseek_auto_glossary.txt`), re-read on every save so mid-session edits are respected, and synchronized against concurrent translation threads. (now it checks for duplicates for both files instead of one)
 
 ### 1.5.3
 - **Fixed: Editor freeze** — `translationCache` (LinkedHashMap with access-order) was not thread-safe. Concurrent `get()`/`put()` from multiple OmegaT worker threads corrupted the internal linked list, causing infinite loops. Wrapped with `Collections.synchronizedMap()`.
