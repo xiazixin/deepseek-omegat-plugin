@@ -55,7 +55,7 @@ Open OmegaT's machine translation settings and configure the DeepSeek engine.
 | Model | `deepseek-v4-flash` | `deepseek-v4-flash` (faster, cheaper) or `deepseek-v4-pro` (slower, more refined) |
 | Temperature | `0.3` | Slider 0.0–2.0 in 0.1 steps. Fades (greys out) when Dynamic Temperature is on — stays visible so you can still see the base value. |
 | Dynamic Temperature | Off | When enabled, lets the API auto-adjust temperature — the slider is ignored |
-| Glossary | None | **None** — glossary disabled. **Reference** — glossary entries are sent as hints; the AI uses judgment and won't blindly override compound terms (e.g. `白金色` stays `platinum color` even with `金色 → gold color` in the glossary). **Strict** — glossary entries must be used exactly. |
+| Glossary | None | **None** — glossary disabled. **Reference** — glossary entries are followed by default; the AI may override an entry only when using it literally would cause a factual, grammatical, or stylistic error (e.g. `白金色` stays `platinum color` even with `金色 → gold color` in the glossary) — never for preference or variety. **Strict** — glossary entries must be used exactly. |
 | Context segments | 0 | Number of surrounding segments (above and below) to include as context. 0 = disabled, up to 3. Helps AI maintain narrative continuity and tone. |
 | Context char limit | 400 | Max characters per context segment before truncation. Options: 200, 400, 600, 800, 1000, or No limit. Adjust based on your segment size. |
 
@@ -91,7 +91,7 @@ Context segments are truncated to the configured character limit (200–1000, or
 
 - The plugin sends only the translated text back to OmegaT.
 - The translation prompt asks the API to preserve tags, placeholders, and line breaks.
-- In **Reference** glossary mode, glossary entries are sent as contextual hints — the AI is instructed to use judgment and not blindly apply partial matches (e.g., compound words containing a glossary term won't be incorrectly split).
+- In **Reference** glossary mode, glossary entries are followed by default — the AI may only deviate when literal use would cause a factual, grammatical, or stylistic error (e.g., a compound word containing a glossary term must not be split), never for preference or variety.
 - Context segments are looked up from the project's ordered entry list using sequential position tracking for efficiency.
 - When no OmegaT project is open, glossary and context features are silently skipped with no errors.
 

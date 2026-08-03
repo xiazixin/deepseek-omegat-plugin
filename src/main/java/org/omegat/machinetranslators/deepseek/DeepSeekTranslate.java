@@ -128,6 +128,8 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         }
 
         String request = createJsonRequest(sLang, tLang, sourceText);
+        // Captured for the DeepSeek menu's "Current prompts" viewer
+        lastRequestBody = request;
         Map<String, String> headers = new TreeMap<>();
         headers.put("Authorization", "Bearer " + apiKey);
 
@@ -825,6 +827,11 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             }
         });
 
+    /** The most recent request body sent to the DeepSeek API, captured so the
+     *  DeepSeek menu's "Current prompts" viewer can display it. Written on
+     *  translation worker threads, read on the EDT. */
+    static volatile String lastRequestBody;
+
     /** Caches the most recent translation for each source text so that when
      *  auto-mode is toggled ON (Ctrl+Shift+M), the already-generated MT result
      *  can be inserted directly — avoiding a redundant API call.  LRU eviction
@@ -1034,9 +1041,12 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         if (mode == GLOSSARY_MODE_STRICT) {
             sb.append("\n\nStrict glossary — you MUST use these exact translations:\n");
         } else {
-            sb.append("\n\nReference glossary — use judgment. Do NOT apply entries blindly "
-                + "(e.g., if glossary has \"金色 → gold color\" and the text contains "
-                + "\"白金色\", still translate \"白金色\" as \"platinum color\"):\n");
+            sb.append("\n\nReference glossary — follow these translations by default. "
+                + "Override an entry ONLY when using it literally would cause a factual, "
+                + "grammatical, or stylistic error (e.g., if the glossary has "
+                + "\"金色 → gold color\" and the text contains \"白金色\", still translate "
+                + "\"白金色\" as \"platinum color\"). "
+                + "Never replace a glossary translation solely for preference or variety:\n");
         }
 
         for (GlossaryEntry e : entries) {

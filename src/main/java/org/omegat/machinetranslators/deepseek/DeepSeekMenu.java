@@ -1,6 +1,8 @@
 package org.omegat.machinetranslators.deepseek;
 
 import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.io.File;
 import java.util.ResourceBundle;
 
@@ -8,6 +10,9 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
 import org.omegat.core.Core;
@@ -55,6 +60,13 @@ final class DeepSeekMenu {
                 });
                 menu.add(rawLogToggle);
 
+                JMenuItem promptsItem = new JMenuItem(
+                        BUNDLE.getString("MT_ENGINE_DEEPSEEK_MENU_PROMPTS"));
+                promptsItem.setToolTipText(
+                        BUNDLE.getString("MT_ENGINE_DEEPSEEK_MENU_PROMPTS_TOOLTIP"));
+                promptsItem.addActionListener(e -> showCurrentPrompts());
+                menu.add(promptsItem);
+
                 menu.addSeparator();
 
                 JMenuItem openItem = new JMenuItem(
@@ -99,6 +111,30 @@ final class DeepSeekMenu {
                 Log.log(e);
             }
         });
+    }
+
+    /**
+     * Shows the most recent request sent to the DeepSeek API in a dialog —
+     * parameters, system prompt, and user message with real line breaks.
+     */
+    private static void showCurrentPrompts() {
+        String body = DeepSeekTranslate.lastRequestBody;
+        if (body == null || body.isEmpty()) {
+            showStatus(BUNDLE.getString("MT_ENGINE_DEEPSEEK_PROMPTS_NOT_FOUND"));
+            return;
+        }
+        try {
+            JTextArea area = new JTextArea(RequestFormatter.format(body));
+            area.setEditable(false);
+            area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+            area.setCaretPosition(0);
+            JScrollPane scrollPane = new JScrollPane(area);
+            scrollPane.setPreferredSize(new Dimension(640, 480));
+            JOptionPane.showMessageDialog(Core.getMainWindow().getApplicationFrame(), scrollPane,
+                    BUNDLE.getString("MT_ENGINE_DEEPSEEK_MENU_PROMPTS"), JOptionPane.PLAIN_MESSAGE);
+        } catch (Exception e) {
+            Log.log(e);
+        }
     }
 
     private static void openLogFile() {
