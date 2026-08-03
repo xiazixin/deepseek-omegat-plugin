@@ -23,6 +23,7 @@ public final class DeepSeekPlugin {
     public static void loadPlugins() {
         Core.registerMachineTranslationClass(DeepSeekTranslate.class);
         registerHotkey();
+        DeepSeekMenu.register();
         // Restore indicator if auto-mode was left on from a previous session
         if (DeepSeekTranslate.isAutoActive()) {
             startIndicator();
@@ -36,6 +37,7 @@ public final class DeepSeekPlugin {
             hotkeyDispatcher = null;
         }
         stopIndicator();
+        DeepSeekMenu.unregister();
     }
 
     /**

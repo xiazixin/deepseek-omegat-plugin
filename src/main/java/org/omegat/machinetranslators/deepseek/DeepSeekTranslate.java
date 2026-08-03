@@ -138,6 +138,10 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             throw new MachineTranslateError(extractErrorMessage(e.body));
         }
 
+        // Raw log (DeepSeek menu): appends the untouched response body to
+        // deepseek_raw.log when enabled — no-op otherwise
+        RawResponseLogger.log(response);
+
         if (response == null) {
             return null;
         }
