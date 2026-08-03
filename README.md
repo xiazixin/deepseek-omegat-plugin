@@ -13,6 +13,7 @@ This plugin adds DeepSeek as a machine translation provider in OmegaT.
 - **Auto-confirm** — when active, also commits the translation and advances to the next segment (use with caution).
 - **Auto-glossary** — the AI suggests key terminology pairs alongside each translation, including optional usage comments. Entries saved to `deepseek_auto_glossary.txt`.
 - **Self-review agent** — a second AI pass reviews each translation for tag preservation, glossary consistency, accuracy, and fluency — correcting errors automatically.
+- **Work tags** — identify the novel to the AI: source author, title, tags, and labels saved to `deepseek_tags.txt` in the project folder and included in every prompt. Edit via the **Additional tags...** button in the MT settings dialog.
 - **Hotkey toggle** — press **Ctrl+Shift+M** anytime to turn auto-mode on/off. Settings define what auto-mode does; the hotkey just switches it.
 - **⚡ AUTO indicator** — persistent status bar indicator shows when auto-mode is active.
 
@@ -53,6 +54,7 @@ Open OmegaT's machine translation settings and configure the DeepSeek engine.
 |---|---|---|
 | API key | *(none)* | Your DeepSeek API key, stored in OmegaT credentials |
 | Model | `deepseek-v4-flash` | `deepseek-v4-flash` (faster, cheaper) or `deepseek-v4-pro` (slower, more refined) |
+| Reasoning | Off | Slider below the model selector, Faster ↔ Smarter: off / minimal / low / medium / high / extra high / maximum. Sent as `"reasoning": {"effort": ...}` — the stops collapse onto the 4 API modes: off→`none`, minimal/low→`low`, medium/high→`high`, extra high/maximum→`max`. |
 | Temperature | `0.3` | Slider 0.0–2.0 in 0.1 steps. Fades (greys out) when Dynamic Temperature is on — stays visible so you can still see the base value. |
 | Dynamic Temperature | Off | When enabled, lets the API auto-adjust temperature — the slider is ignored |
 | Glossary | None | **None** — glossary disabled. **Reference** — glossary entries are followed by default; the AI may override an entry only when using it literally would cause a factual, grammatical, or stylistic error (e.g. `白金色` stays `platinum color` even with `金色 → gold color` in the glossary) — never for preference or variety. **Strict** — glossary entries must be used exactly. |
@@ -106,7 +108,9 @@ Context segments are truncated to the configured character limit (200–1000, or
 ## Changelog
 
 ### 1.6.0
-- **New: DeepSeek top menu** — a dedicated top-level menu in the OmegaT menu bar for additional plugin functions. (Currently for trobleshooting function So I dont have to make an independent dev build like before.)
+- **New: DeepSeek top menu** — a dedicated top-level menu in the OmegaT menu bar for additional plugin functions.
+- **New: Work tags** — identify the source work to the AI. The MT settings dialog has an **Additional tags...** button that opens an editor (source author, source title, source tags, generic labels, blank tags); **Create / update tags** writes `deepseek_tags.txt` into the project folder, and the tags are injected into every translation prompt.
+- **New: Reasoning slider** — below the model selector, Faster ↔ Smarter with stops off / minimal / low / medium / high / extra high / maximum (default off). Sent as `"reasoning": {"effort": ...}`, collapsing onto the 4 API modes (none/low/high/max). Applies to the self-review pass too. (Currently for trobleshooting function So I dont have to make an independent dev build like before.)
 - **New: Raw response log** — menu toggle that appends every raw DeepSeek API response body (untouched JSON) to `deepseek_raw.log` in the OmegaT configuration folder. The file contains only raw responses; the menu also offers open/clear. (the build in log is too hard to read for me)
 - **New: Current prompts viewer** — menu item showing the most recent request sent to the DeepSeek API (parameters, system prompt, and user message) with real line breaks in a scrollable dialog. (still mostly dev funtions, but it can give you an clear picture as well)
 - **Changed: Reference glossary mode** — entries are now followed by default; the AI may override an entry only when using it literally would cause a factual, grammatical, or stylistic error — never for preference or variety. (glossary reference mode should be stricter)

@@ -25,6 +25,7 @@ public class DeepSeekTranslateTest {
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_REASONING_EFFORT, 0);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         String json = translate.createJsonRequest(new Language("EN"), new Language("DE"), "Hello world");
@@ -35,7 +36,8 @@ public class DeepSeekTranslateTest {
                 + "{\"content\":\"Hello world\",\"role\":\"user\"}],"
                 + "\"model\":\"deepseek-v4-flash\","
                 + "\"stream\":false,"
-                + "\"temperature\":0.3}";
+                + "\"temperature\":0.3,"
+                + "\"reasoning\":{\"effort\":\"none\"}}";
 
         ObjectMapper mapper = new ObjectMapper();
         assertEquals(mapper.readTree(expected), mapper.readTree(json));
@@ -49,6 +51,7 @@ public class DeepSeekTranslateTest {
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, true);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_REASONING_EFFORT, 0);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         String json = translate.createJsonRequest(new Language("EN"), new Language("DE"), "Hello world");
@@ -58,7 +61,8 @@ public class DeepSeekTranslateTest {
             + "{\"content\":\"You are a professional translation engine for OmegaT. Translate from en to de. Preserve tags, placeholders, and line breaks. Return only the translated text.\",\"role\":\"system\"},"
                 + "{\"content\":\"Hello world\",\"role\":\"user\"}],"
                 + "\"model\":\"deepseek-v4-flash\","
-                + "\"stream\":false}";
+                + "\"stream\":false,"
+                + "\"reasoning\":{\"effort\":\"none\"}}";
 
         ObjectMapper mapper = new ObjectMapper();
         assertEquals(mapper.readTree(expected), mapper.readTree(json));
@@ -88,6 +92,7 @@ public class DeepSeekTranslateTest {
                 DeepSeekTranslate.GLOSSARY_MODE_NONE);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_REASONING_EFFORT, 0);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         String json = translate.createJsonRequest(new Language("EN"), new Language("DE"), "Hello world");
@@ -101,7 +106,8 @@ public class DeepSeekTranslateTest {
                 + "{\"content\":\"Hello world\",\"role\":\"user\"}],"
                 + "\"model\":\"deepseek-v4-flash\","
                 + "\"stream\":false,"
-                + "\"temperature\":0.3}";
+                + "\"temperature\":0.3,"
+                + "\"reasoning\":{\"effort\":\"none\"}}";
 
         ObjectMapper mapper = new ObjectMapper();
         assertEquals(mapper.readTree(expected), mapper.readTree(json));
@@ -117,6 +123,7 @@ public class DeepSeekTranslateTest {
                 DeepSeekTranslate.GLOSSARY_MODE_REFERENCE);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_REASONING_EFFORT, 0);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         // Should not throw — when no project is open, glossary is simply skipped
@@ -131,7 +138,8 @@ public class DeepSeekTranslateTest {
                 + "{\"content\":\"Hello world\",\"role\":\"user\"}],"
                 + "\"model\":\"deepseek-v4-flash\","
                 + "\"stream\":false,"
-                + "\"temperature\":0.3}";
+                + "\"temperature\":0.3,"
+                + "\"reasoning\":{\"effort\":\"none\"}}";
 
         ObjectMapper mapper = new ObjectMapper();
         assertEquals(mapper.readTree(expected), mapper.readTree(json));
@@ -147,6 +155,7 @@ public class DeepSeekTranslateTest {
                 DeepSeekTranslate.GLOSSARY_MODE_STRICT);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_REASONING_EFFORT, 0);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         // Should not throw — when no project is open, glossary is simply skipped
@@ -160,7 +169,8 @@ public class DeepSeekTranslateTest {
                 + "{\"content\":\"Hello world\",\"role\":\"user\"}],"
                 + "\"model\":\"deepseek-v4-flash\","
                 + "\"stream\":false,"
-                + "\"temperature\":0.3}";
+                + "\"temperature\":0.3,"
+                + "\"reasoning\":{\"effort\":\"none\"}}";
 
         ObjectMapper mapper = new ObjectMapper();
         assertEquals(mapper.readTree(expected), mapper.readTree(json));
@@ -175,6 +185,7 @@ public class DeepSeekTranslateTest {
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_CONTEXT_SEGMENTS, 2);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_REASONING_EFFORT, 0);
 
         DeepSeekTranslate translate = new DeepSeekTranslate();
         // Should not throw — when no project is open, context is simply skipped
@@ -188,9 +199,44 @@ public class DeepSeekTranslateTest {
                 + "{\"content\":\"Hello world\",\"role\":\"user\"}],"
                 + "\"model\":\"deepseek-v4-flash\","
                 + "\"stream\":false,"
-                + "\"temperature\":0.3}";
+                + "\"temperature\":0.3,"
+                + "\"reasoning\":{\"effort\":\"none\"}}";
 
         ObjectMapper mapper = new ObjectMapper();
         assertEquals(mapper.readTree(expected), mapper.readTree(json));
+    }
+
+    @Test
+    public void reasoningMaximumSendsMax() throws Exception {
+        Preferences.setPreference(DeepSeekTranslate.ALLOW_DEEPSEEK_TRANSLATE, true);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_MODEL, "deepseek-v4-flash");
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_TEMPERATURE, "0.3");
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_REASONING_EFFORT, 6);
+
+        DeepSeekTranslate translate = new DeepSeekTranslate();
+        String json = translate.createJsonRequest(new Language("EN"), new Language("DE"), "Hello world");
+
+        ObjectMapper mapper = new ObjectMapper();
+        assertEquals("max", mapper.readTree(json).get("reasoning").get("effort").asText());
+    }
+
+    @Test
+    public void reasoningMediumCollapsesToHigh() throws Exception {
+        Preferences.setPreference(DeepSeekTranslate.ALLOW_DEEPSEEK_TRANSLATE, true);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_MODEL, "deepseek-v4-flash");
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_TEMPERATURE, "0.3");
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_REASONING_EFFORT, 3);
+
+        DeepSeekTranslate translate = new DeepSeekTranslate();
+        String json = translate.createJsonRequest(new Language("EN"), new Language("DE"), "Hello world");
+
+        ObjectMapper mapper = new ObjectMapper();
+        assertEquals("high", mapper.readTree(json).get("reasoning").get("effort").asText());
     }
 }

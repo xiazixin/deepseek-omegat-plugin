@@ -22,6 +22,7 @@ import java.util.ResourceBundle;
 import java.util.TreeMap;
 
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -96,6 +97,18 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private static final int TEMPERATURE_MIN = 0;
     private static final int TEMPERATURE_MAX = 20;
     private static final int TEMPERATURE_DEFAULT_SLIDER = 3;
+
+    /** Reasoning effort selector: 7 slider stops collapsed onto the 4 API
+     *  modes (none/low/high/max). Default is off — reasoning disabled. */
+    public static final String PROPERTY_REASONING_EFFORT = "deepseek.api.reasoning_effort";
+    private static final int REASONING_OFF = 0;
+    private static final int REASONING_DEFAULT = REASONING_OFF;
+    private static final String[] REASONING_API_VALUES = {
+        "none", "low", "low", "high", "high", "max", "max"
+    };
+    private static final String[] REASONING_LABELS = {
+        "off", "minimal", "low", "medium", "high", "extra high", "maximum"
+    };
     private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
     private static final String BUNDLE_BASENAME = "org.omegat.machinetranslators.deepseek.Bundle";
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(BUNDLE_BASENAME);
@@ -318,6 +331,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             if (!isDynamicTemperature()) {
                 request.put("temperature", 0.2); // Lower temp for review — be precise
             }
+            applyReasoning(request);
 
             Map<String, String> headers = new TreeMap<>();
             headers.put("Authorization", "Bearer " + apiKey);
@@ -530,6 +544,21 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             temperatureSlider.setEnabled(enabled);
         });
 
+        // Reasoning effort slider: 7 stops from off (thinking disabled) to
+        // maximum, displayed directly below the model selector
+        JSlider reasoningSlider = new JSlider(REASONING_OFF, REASONING_LABELS.length - 1,
+                getReasoningEffort());
+        reasoningSlider.setMajorTickSpacing(1);
+        reasoningSlider.setPaintTicks(true);
+        reasoningSlider.setPaintLabels(true);
+        reasoningSlider.setSnapToTicks(true);
+        @SuppressWarnings("UseOfObsoleteCollectionType")
+        Dictionary<Integer, JLabel> reasoningLabels = new Hashtable<>();
+        for (int i = 0; i < REASONING_LABELS.length; i++) {
+            reasoningLabels.put(i, new JLabel(REASONING_LABELS[i]));
+        }
+        reasoningSlider.setLabelTable(reasoningLabels);
+
         // Auto-insert and auto-confirm checkboxes (declared before dialog for onConfirm capture)
         boolean autoInsert = isAutoInsert();
         boolean autoConfirm = isAutoConfirm();
@@ -578,6 +607,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                 Preferences.setPreference(PROPERTY_MODEL, model);
                 Preferences.setPreference(PROPERTY_TEMPERATURE, String.valueOf(temperature));
                 Preferences.setPreference(PROPERTY_DYNAMIC_TEMPERATURE, dynamic);
+                Preferences.setPreference(PROPERTY_REASONING_EFFORT, reasoningSlider.getValue());
                 Preferences.setPreference(PROPERTY_GLOSSARY_MODE, glossaryModeIdx);
                 Preferences.setPreference(PROPERTY_CONTEXT_SEGMENTS, contextSegmentsVal);
                 Preferences.setPreference(PROPERTY_CONTEXT_TRUNCATION, truncationVal);
@@ -604,6 +634,20 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         credentialsPanel.add(modelComboBox, gbc);
         credentialsPanel.revalidate();
         credentialsPanel.repaint();
+
+        // Reasoning panel — directly below the model selector, Faster ↔ Smarter
+        JPanel reasoningPanel = new JPanel(new BorderLayout(5, 0));
+        reasoningPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        JPanel reasoningSliderPanel = new JPanel(new BorderLayout(5, 0));
+        reasoningSliderPanel.add(new JLabel(BUNDLE.getString("MT_ENGINE_DEEPSEEK_REASONING_LABEL")),
+                BorderLayout.NORTH);
+        reasoningSliderPanel.add(reasoningSlider, BorderLayout.CENTER);
+        reasoningPanel.add(new JLabel(BUNDLE.getString("MT_ENGINE_DEEPSEEK_REASONING_FASTER")),
+                BorderLayout.WEST);
+        reasoningPanel.add(reasoningSliderPanel, BorderLayout.CENTER);
+        reasoningPanel.add(new JLabel(BUNDLE.getString("MT_ENGINE_DEEPSEEK_REASONING_SMARTER")),
+                BorderLayout.EAST);
+        dialog.panel.itemsPanel.add(reasoningPanel);
 
         // Add temperature panel below credentials
         JPanel temperaturePanel = new JPanel(new BorderLayout(5, 0));
@@ -666,6 +710,16 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         selfReviewPanel.add(selfReviewCheckBox, BorderLayout.NORTH);
         dialog.panel.itemsPanel.add(selfReviewPanel);
 
+        // Work tags panel (label + button that pops the tags editor)
+        JPanel workTagsPanel = new JPanel(new BorderLayout(5, 0));
+        workTagsPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        JLabel workTagsLabel = new JLabel(BUNDLE.getString("MT_ENGINE_DEEPSEEK_TAGS_LABEL"));
+        JButton workTagsButton = new JButton(BUNDLE.getString("MT_ENGINE_DEEPSEEK_TAGS_BUTTON"));
+        workTagsButton.addActionListener(e -> WorkTagsDialog.showDialog(parent));
+        workTagsPanel.add(workTagsLabel, BorderLayout.CENTER);
+        workTagsPanel.add(workTagsButton, BorderLayout.EAST);
+        dialog.panel.itemsPanel.add(workTagsPanel);
+
         dialog.show();
     }
 
@@ -677,6 +731,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         if (!isDynamicTemperature()) {
             request.put("temperature", getTemperature());
         }
+        applyReasoning(request);
 
         return MAPPER.writeValueAsString(request);
     }
@@ -747,6 +802,22 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
 
     private boolean isDynamicTemperature() {
         return Preferences.isPreference(PROPERTY_DYNAMIC_TEMPERATURE);
+    }
+
+    private int getReasoningEffort() {
+        int value = Preferences.getPreferenceDefault(PROPERTY_REASONING_EFFORT, REASONING_DEFAULT);
+        return Math.max(REASONING_OFF, Math.min(REASONING_API_VALUES.length - 1, value));
+    }
+
+    /**
+     * Applies the reasoning selector to a request as
+     * {@code "reasoning": {"effort": "none|low|high|max"}}.
+     * The 7 slider stops collapse onto the 4 API modes.
+     */
+    private void applyReasoning(Map<String, Object> request) {
+        Map<String, String> reasoning = new TreeMap<>();
+        reasoning.put("effort", REASONING_API_VALUES[getReasoningEffort()]);
+        request.put("reasoning", reasoning);
     }
 
     private int getGlossaryMode() {
@@ -895,6 +966,12 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                     prompt.append(ctx);
                 }
             }
+        }
+
+        // Work tags (identify the source work to the AI)
+        String workTags = WorkTags.formatForPrompt(WorkTags.load(WorkTags.getTagsFile()));
+        if (!workTags.isEmpty()) {
+            prompt.append(workTags);
         }
 
         int glossaryMode = getGlossaryMode();
