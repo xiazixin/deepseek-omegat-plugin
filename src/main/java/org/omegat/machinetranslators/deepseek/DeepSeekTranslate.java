@@ -88,10 +88,13 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private static final int CONTEXT_TRUNCATION_DEFAULT = 400;
     private static final int[] CONTEXT_TRUNCATION_OPTIONS = { 200, 400, 600, 800, 1000, 0 };
 
+    /** V4.1 Flash — the latest model, served by the API as "deepseek-flash".
+     *  The retired "deepseek-v4-flash" name is temporarily routed to it by the API. */
+    private static final String MODEL_DEEPSEEK_FLASH = "deepseek-flash";
+    /** V4 Pro — being sunset; API routes it to V4.1 Flash after 2026-09-14. */
     private static final String MODEL_DEEPSEEK_V4_PRO = "deepseek-v4-pro";
-    private static final String MODEL_DEEPSEEK_V4_FLASH = "deepseek-v4-flash";
-    private static final String[] AVAILABLE_MODELS = { MODEL_DEEPSEEK_V4_PRO, MODEL_DEEPSEEK_V4_FLASH };
-    private static final String DEFAULT_MODEL = MODEL_DEEPSEEK_V4_FLASH;
+    private static final String[] AVAILABLE_MODELS = { MODEL_DEEPSEEK_FLASH, MODEL_DEEPSEEK_V4_PRO };
+    private static final String DEFAULT_MODEL = MODEL_DEEPSEEK_FLASH;
     private static final String DEFAULT_URL = "https://api.deepseek.com";
     private static final double DEFAULT_TEMPERATURE = 0.3;
     private static final int TEMPERATURE_MIN = 0;

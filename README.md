@@ -1,4 +1,4 @@
-# DeepSeek OmegaT Plugin ![version](https://img.shields.io/badge/version-1.6.0-blue)
+# DeepSeek OmegaT Plugin ![version](https://img.shields.io/badge/version-1.6.2-blue)
 
 This plugin adds DeepSeek as a machine translation provider in OmegaT.
 
@@ -53,7 +53,7 @@ Open OmegaT's machine translation settings and configure the DeepSeek engine.
 | Setting | Default | Description |
 |---|---|---|
 | API key | *(none)* | Your DeepSeek API key, stored in OmegaT credentials |
-| Model | `deepseek-v4-flash` | `deepseek-v4-flash` (faster, cheaper) or `deepseek-v4-pro` (slower, more refined) |
+| Model | `deepseek-flash` | `deepseek-flash` (V4.1 Flash — latest, faster, cheaper) or `deepseek-v4-pro` (V4 Pro — being retired; the API routes it to V4.1 Flash after 2026-09-14) |
 | Reasoning | Off | Slider below the model selector, Faster ↔ Smarter: off / minimal / low / medium / high / extra high / maximum. Sent as `"reasoning": {"effort": ...}` — the stops collapse onto the 4 API modes: off→`none`, minimal/low→`low`, medium/high→`high`, extra high/maximum→`max`. |
 | Temperature | `0.3` | Slider 0.0–2.0 in 0.1 steps. Fades (greys out) when Dynamic Temperature is on — stays visible so you can still see the base value. |
 | Dynamic Temperature | Off | When enabled, lets the API auto-adjust temperature — the slider is ignored |
@@ -107,10 +107,15 @@ Context segments are truncated to the configured character limit (200–1000, or
 
 ## Changelog
 
-### 1.6.0
-- **New: DeepSeek top menu** — a dedicated top-level menu in the OmegaT menu bar for additional plugin functions.
+### 1.6.2
+- **New: DeepSeek V4.1 Flash model** — the latest DeepSeek model, called in the API as `deepseek-flash`, is now the default (see the [V4.1 Flash announcement](https://api-docs.deepseek.com/zh-cn/news/news260910)). The retired `deepseek-v4-flash` was removed from the selector (the API temporarily routes it to V4.1 Flash). `deepseek-v4-pro` remains selectable, but DeepSeek is sunsetting it — requests are routed to V4.1 Flash after 2026-09-14.
+
+### 1.6.1
 - **New: Work tags** — identify the source work to the AI. The MT settings dialog has an **Additional tags...** button that opens an editor (source author, source title, source tags, generic labels, blank tags); **Create / update tags** writes `deepseek_tags.txt` into the project folder, and the tags are injected into every translation prompt.
 - **New: Reasoning slider** — below the model selector, Faster ↔ Smarter with stops off / minimal / low / medium / high / extra high / maximum (default off). Sent as `"reasoning": {"effort": ...}`, collapsing onto the 4 API modes (none/low/high/max). Applies to the self-review pass too. (Currently for trobleshooting function So I dont have to make an independent dev build like before.)
+
+### 1.6.0
+- **New: DeepSeek top menu** — a dedicated top-level menu in the OmegaT menu bar for additional plugin functions.
 - **New: Raw response log** — menu toggle that appends every raw DeepSeek API response body (untouched JSON) to `deepseek_raw.log` in the OmegaT configuration folder. The file contains only raw responses; the menu also offers open/clear. (the build in log is too hard to read for me)
 - **New: Current prompts viewer** — menu item showing the most recent request sent to the DeepSeek API (parameters, system prompt, and user message) with real line breaks in a scrollable dialog. (still mostly dev funtions, but it can give you an clear picture as well)
 - **Changed: Reference glossary mode** — entries are now followed by default; the AI may override an entry only when using it literally would cause a factual, grammatical, or stylistic error — never for preference or variety. (glossary reference mode should be stricter)
