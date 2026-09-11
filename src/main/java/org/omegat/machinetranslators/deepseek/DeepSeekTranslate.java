@@ -943,6 +943,14 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             .append(describeLanguage(sLang)).append(" to ").append(describeLanguage(tLang))
             .append(". Preserve tags, placeholders, and line breaks.");
 
+        // Work tags (identify the source work to the AI). Static per project,
+        // so keep it above the per-segment dynamic sections (context, glossary)
+        // to maximize the shared prompt prefix.
+        String workTags = WorkTags.formatForPrompt(WorkTags.load(WorkTags.getTagsFile()));
+        if (!workTags.isEmpty()) {
+            prompt.append(workTags);
+        }
+
         // Auto-glossary: ask AI to suggest terminology pairs
         if (isAutoGlossary()) {
             prompt.append(" After translating, identify any key domain-specific terms or phrases "
@@ -969,12 +977,6 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                     prompt.append(ctx);
                 }
             }
-        }
-
-        // Work tags (identify the source work to the AI)
-        String workTags = WorkTags.formatForPrompt(WorkTags.load(WorkTags.getTagsFile()));
-        if (!workTags.isEmpty()) {
-            prompt.append(workTags);
         }
 
         int glossaryMode = getGlossaryMode();
