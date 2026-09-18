@@ -2,6 +2,8 @@
 
 This plugin adds DeepSeek as a machine translation provider in OmegaT.
 
+**Documentation:** <https://xiaz.dev/documentation/deepseek-omegat-plugin/> — setup, configuration reference, and guides for glossaries, context segments, work tags, auto mode and the self-review pass.
+
 ## Features
 
 - Registers a DeepSeek translation engine inside OmegaT.
