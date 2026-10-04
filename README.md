@@ -1,4 +1,4 @@
-# DeepSeek OmegaT Plugin ![version](https://img.shields.io/badge/version-1.6.2-blue)
+# DeepSeek OmegaT Plugin ![version](https://img.shields.io/badge/version-1.7.0-blue)
 
 This plugin adds DeepSeek as a machine translation provider in OmegaT.
 
@@ -11,6 +11,7 @@ This plugin adds DeepSeek as a machine translation provider in OmegaT.
 - Configurable model selection, temperature, and dynamic temperature.
 - **Glossary support** — automatically reads OmegaT project glossaries and passes matching entries (with comments) to the AI as translation hints.
 - **Context segments** — optionally sends surrounding segments (above/below) to the AI for better continuity and tone consistency across sentences.
+- **Context chaining** — ordered, append-only chain of previous segments (`seg 1, 2, 3…` with your stored translations) built into every prompt. Grows only in order, keeps the prompt prefix stable for DeepSeek's context cache.
 - **Auto-insert** — when active, automatically fills the target segment with the machine translation result, eliminating the need to press Ctrl+M for every segment.
 - **Auto-confirm** — when active, also commits the translation and advances to the next segment (use with caution).
 - **Auto-glossary** — the AI suggests key terminology pairs alongside each translation, including optional usage comments. Entries saved to `deepseek_auto_glossary.txt`.
@@ -62,6 +63,8 @@ Open OmegaT's machine translation settings and configure the DeepSeek engine.
 | Glossary | None | **None** — glossary disabled. **Reference** — glossary entries are followed by default; the AI may override an entry only when using it literally would cause a factual, grammatical, or stylistic error (e.g. `白金色` stays `platinum color` even with `金色 → gold color` in the glossary) — never for preference or variety. **Strict** — glossary entries must be used exactly. |
 | Context segments | 0 | Number of surrounding segments (above and below) to include as context. 0 = disabled, up to 3. Helps AI maintain narrative continuity and tone. |
 | Context char limit | 400 | Max characters per context segment before truncation. Options: 200, 400, 600, 800, 1000, or No limit. Adjust based on your segment size. |
+| Context chaining | Off | Ordered, append-only chain of previous segments (`seg 1, 2, 3…` with your stored translations). Replaces the `[Above]` context format; segments below still follow **Context segments**. |
+| Chain length | 100 | Max previous segments kept in the chain: 25, 50, 100, 200, or No limit. When full, the chain resets (one cache break) and regrows from the current segment. |
 
 You can also override settings with system properties:
 
@@ -91,6 +94,39 @@ When set to a value greater than 0, the plugin includes up to N segments above a
 
 Context segments are truncated to the configured character limit (200–1000, or no limit). Adjust based on your typical segment size — higher values for paragraph-level segmentation, lower for sentence-level. Default is 400 characters.
 
+## Context Chaining
+
+When **Context chaining** is enabled, the plugin builds an ordered, append-only chain of previously translated segments into every system prompt, instead of the sliding `[Above]` window:
+
+```
+Previous segments
+seg 1 : <source>  →  <your stored translation>
+seg 2 : <source>  →  <your stored translation>
+seg 3 : <source>  →  <your stored translation>
+
+Current segment: segment 4 below
+
+Segment below for reference (DO NOT translate these — only the current segment):
+<source of segment 5>
+...
+```
+
+The rules:
+
+- **Grows only in order** — translating segments 1 → 2 → 3 appends each one as you move forward. A segment joins the chain only when every segment before it (back to the chain's start) is translated.
+- **Added after your edits, not after the AI replies** — entries come only from translations **stored in the OmegaT project** (committed via Ctrl+Enter, saved when you navigate away, or committed by auto-confirm), i.e. your final edited text. A raw AI suggestion that was never stored never enters the chain.
+- **Jumps don't extend the chain** — if you jump from segment 3 to segment 5 (skipping 4), the prompt for segment 5 still shows the existing chain (seg 1–3) but the chain does not grow across the gap. Segment 5 joins only after you translate segment 4 — then both backfill automatically as you continue forward.
+- **Frozen entries** — each line is fixed the moment it is appended. Going back and editing an already-chained segment does NOT rewrite the chain, so the prompt prefix never changes mid-run.
+- **KV-cache friendly** — because the chain only ever appends (never reorders, slides, or rewrites), the prompt prefix stays byte-identical between requests and DeepSeek's context cache keeps hitting: each new segment costs only its own tokens plus one new chain line. When the chain hits the **Chain length** cap it resets once and regrows from the current segment — never a sliding window, which would break the cache on every request.
+
+Segments below the current one (source only, "DO NOT translate") still follow the **Context segments** count, and both chain lines and below segments respect the **Context char limit** truncation. Segment numbers are 1-based positions in the project's ordered entry list, so the AI can see a gap when you skipped segments.
+
+**Moving between files in the same project:** the chain is indexed by position in the project-wide entry list, not per file — so it is never reset by switching files. Moving from the last segment of one file to the first segment of the next is just a normal in-order step: the chain grows right across the boundary and numbering continues (the next file starts at e.g. `seg 101`, not `seg 1`), which keeps the previous file's tail as context when you start a new one. Jumping back to an earlier file also keeps the chain fully intact — the prompt simply renders the chain prefix up to that segment, and growth resumes when you move forward again.
+
+**The chain resets only when:** you open a different project (or reopen the current one), confirm the MT settings dialog, hit the **Chain length** cap (one reset, then regrowth), or restart OmegaT — the chain is session memory only and is never written to disk.
+
+**Caveats:** position lookup works by source-text equality, so if the identical sentence appears in more than one file, a jump may resolve to the wrong copy for that segment. Also, the entry list is snapshotted when the project is opened — adding or removing files mid-session won't renumber segments until you reopen the project.
+
 ## Notes
 
 - The plugin sends only the translated text back to OmegaT.
@@ -108,6 +144,9 @@ Context segments are truncated to the configured character limit (200–1000, or
   **Workaround**: temporarily set Context segments to 0 when translating isolated punctuation segments, or manually correct the output after translation.
 
 ## Changelog
+
+### 1.7.0
+- **New: Context chaining** — ordered, append-only chain of previous segments (`seg 1 : src → trg`, `seg 2 : …`) built into every system prompt, replacing the sliding `[Above]` window when enabled. Entries come only from translations stored in the OmegaT project (your edited text — raw AI replies never enter the chain), grow only in order, never extend across an untranslated gap (jumping 3 → 5 keeps the chain but can't extend it; segment 5 joins only after segment 4 is translated), and are frozen at append time — so the prompt prefix stays byte-stable and DeepSeek's context cache keeps hitting. New **Chain length** setting (25/50/100/200/No limit, default 100): on overflow the chain resets once and regrows instead of sliding. Segments below still follow **Context segments**; truncation still follows **Context char limit**.
 
 ### 1.6.2
 - **New: DeepSeek V4.1 Flash model** — the latest DeepSeek model, called in the API as `deepseek-flash`, is now the default (see the [V4.1 Flash announcement](https://api-docs.deepseek.com/zh-cn/news/news260910)). The retired `deepseek-v4-flash` was removed from the selector (the API temporarily routes it to V4.1 Flash). `deepseek-v4-pro` remains selectable, but DeepSeek is sunsetting it — requests are routed to V4.1 Flash after 2026-09-14.

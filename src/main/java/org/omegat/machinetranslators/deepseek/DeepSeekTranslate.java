@@ -88,6 +88,14 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private static final int CONTEXT_TRUNCATION_DEFAULT = 400;
     private static final int[] CONTEXT_TRUNCATION_OPTIONS = { 200, 400, 600, 800, 1000, 0 };
 
+    /** Ordered context chaining: append-only "Previous segments" chain (KV-cache friendly) */
+    public static final String PROPERTY_CONTEXT_CHAINING = "deepseek.api.context_chaining";
+
+    /** Max chain entries before the chain resets and regrows (0 = no limit) */
+    public static final String PROPERTY_CONTEXT_CHAIN_LENGTH = "deepseek.api.context_chain_length";
+    private static final int CONTEXT_CHAIN_LENGTH_DEFAULT = 100;
+    private static final int[] CONTEXT_CHAIN_LENGTH_OPTIONS = { 25, 50, 100, 200, 0 };
+
     /** V4.1 Flash — the latest model, served by the API as "deepseek-flash".
      *  The retired "deepseek-v4-flash" name is temporarily routed to it by the API. */
     private static final String MODEL_DEEPSEEK_FLASH = "deepseek-flash";
@@ -511,6 +519,26 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         JComboBox<String> truncationComboBox = new JComboBox<>(truncationOptions);
         truncationComboBox.setSelectedIndex(truncationToIndex(truncation));
 
+        // Context chaining checkbox (ordered, append-only chain of previous segments)
+        JCheckBox chainingCheckBox = new JCheckBox(
+                BUNDLE.getString("MT_ENGINE_DEEPSEEK_CHAINING_LABEL"));
+        chainingCheckBox.setSelected(isContextChaining());
+        chainingCheckBox.setToolTipText(BUNDLE.getString("MT_ENGINE_DEEPSEEK_CHAINING_TOOLTIP"));
+
+        // Chain length combo box (max chain entries before the chain resets)
+        int chainLength = getChainLength();
+        String[] chainLengthOptions = new String[CONTEXT_CHAIN_LENGTH_OPTIONS.length];
+        for (int i = 0; i < CONTEXT_CHAIN_LENGTH_OPTIONS.length - 1; i++) {
+            chainLengthOptions[i] = String.valueOf(CONTEXT_CHAIN_LENGTH_OPTIONS[i]);
+        }
+        chainLengthOptions[CONTEXT_CHAIN_LENGTH_OPTIONS.length - 1] =
+            BUNDLE.getString("MT_ENGINE_DEEPSEEK_CONTEXT_TRUNCATION_NOLIMIT");
+        JComboBox<String> chainLengthComboBox = new JComboBox<>(chainLengthOptions);
+        chainLengthComboBox.setSelectedIndex(chainLengthToIndex(chainLength));
+        chainLengthComboBox.setEnabled(chainingCheckBox.isSelected());
+        chainingCheckBox.addActionListener(e ->
+                chainLengthComboBox.setEnabled(chainingCheckBox.isSelected()));
+
         // Slider sub-panel (label + slider)
         JPanel sliderPanel = new JPanel(new BorderLayout(5, 0));
         JLabel tempLabel = new JLabel(BUNDLE.getString("MT_ENGINE_DEEPSEEK_TEMPERATURE_LABEL"));
@@ -614,6 +642,9 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                 Preferences.setPreference(PROPERTY_GLOSSARY_MODE, glossaryModeIdx);
                 Preferences.setPreference(PROPERTY_CONTEXT_SEGMENTS, contextSegmentsVal);
                 Preferences.setPreference(PROPERTY_CONTEXT_TRUNCATION, truncationVal);
+                Preferences.setPreference(PROPERTY_CONTEXT_CHAINING, chainingCheckBox.isSelected());
+                Preferences.setPreference(PROPERTY_CONTEXT_CHAIN_LENGTH,
+                        CONTEXT_CHAIN_LENGTH_OPTIONS[chainLengthComboBox.getSelectedIndex()]);
                 Preferences.setPreference(PROPERTY_AUTO_INSERT, autoInsertCheckBox.isSelected());
                 Preferences.setPreference(PROPERTY_AUTO_CONFIRM,
                         autoInsertCheckBox.isSelected() && autoConfirmCheckBox.isSelected());
@@ -682,6 +713,18 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         truncationPanel.add(truncationLabel, BorderLayout.NORTH);
         truncationPanel.add(truncationComboBox, BorderLayout.CENTER);
         dialog.panel.itemsPanel.add(truncationPanel);
+
+        // Context chaining panel (checkbox on top, chain length below, indented)
+        JPanel chainingPanel = new JPanel(new BorderLayout(5, 0));
+        chainingPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        chainingPanel.add(chainingCheckBox, BorderLayout.NORTH);
+        JPanel chainLengthPanel = new JPanel(new BorderLayout(5, 0));
+        chainLengthPanel.setBorder(BorderFactory.createEmptyBorder(2, 20, 0, 0));
+        JLabel chainLengthLabel = new JLabel(BUNDLE.getString("MT_ENGINE_DEEPSEEK_CHAIN_LENGTH_LABEL"));
+        chainLengthPanel.add(chainLengthLabel, BorderLayout.NORTH);
+        chainLengthPanel.add(chainLengthComboBox, BorderLayout.CENTER);
+        chainingPanel.add(chainLengthPanel, BorderLayout.CENTER);
+        dialog.panel.itemsPanel.add(chainingPanel);
 
         // Auto-insert / Auto-confirm panel
         JPanel autoInsertPanel = new JPanel(new BorderLayout(5, 0));
@@ -874,10 +917,37 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         return 1;
     }
 
+    private boolean isContextChaining() {
+        return Preferences.isPreference(PROPERTY_CONTEXT_CHAINING);
+    }
+
+    private int getChainLength() {
+        return Preferences.getPreferenceDefault(PROPERTY_CONTEXT_CHAIN_LENGTH,
+                CONTEXT_CHAIN_LENGTH_DEFAULT);
+    }
+
+    private static int chainLengthToIndex(int value) {
+        for (int i = 0; i < CONTEXT_CHAIN_LENGTH_OPTIONS.length; i++) {
+            if (CONTEXT_CHAIN_LENGTH_OPTIONS[i] == value) return i;
+        }
+        // Default to 100
+        for (int i = 0; i < CONTEXT_CHAIN_LENGTH_OPTIONS.length; i++) {
+            if (CONTEXT_CHAIN_LENGTH_OPTIONS[i] == CONTEXT_CHAIN_LENGTH_DEFAULT) return i;
+        }
+        return 2;
+    }
+
     /** Tracks sequential translation position for efficient context lookups */
     private int contextLastPosition = -1;
     private String contextLastProjectPath = null;
     private List<String> contextCachedSources = null;
+    /** Parallel to contextCachedSources — the entries themselves, so the chain
+     *  can query their live stored translations. */
+    private List<SourceTextEntry> contextCachedEntries = null;
+
+    /** Ordered, append-only chain of previously translated segments (context
+     *  chaining). Replaced on reset so a new chain length setting takes effect. */
+    private volatile SegmentChain segmentChain = new SegmentChain(getChainLength());
 
     /** Caches this plugin's own translation output as a fallback for context continuity.
      *  Wrapped with synchronizedMap because LinkedHashMap with access-order
@@ -967,9 +1037,24 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             prompt.append(" Return only the translated text.");
         }
 
-        // Context segments (surrounding text for continuity)
         int contextCount = getContextSegments();
-        if (contextCount > 0) {
+        if (isContextChaining()) {
+            // Context chaining: ordered, append-only "Previous segments" chain.
+            // The chain block sits above the per-request dynamic sections so the
+            // shared prompt prefix keeps growing instead of changing (KV cache).
+            int pos = findSourcePosition(text);
+            if (pos >= 0) {
+                segmentChain.update(pos, chainLookup(), this::renderChainLine);
+                prompt.append(segmentChain.render(pos));
+                if (contextCount > 0) {
+                    String below = getBelowContextText(pos, contextCount);
+                    if (!below.isEmpty()) {
+                        prompt.append(below);
+                    }
+                }
+            }
+        } else if (contextCount > 0) {
+            // Context segments (surrounding text for continuity)
             int pos = findSourcePosition(text);
             if (pos >= 0) {
                 String ctx = getContextText(pos, contextCount);
@@ -1142,6 +1227,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             // Invalidate cache when project changes
             if (!projectPath.equals(contextLastProjectPath) || contextCachedSources == null) {
                 contextCachedSources = new ArrayList<>();
+                contextCachedEntries = new ArrayList<>();
                 contextStoredTranslations = new TreeMap<>();
                 List<SourceTextEntry> entries = Core.getProject().getAllEntries();
                 if (entries != null) {
@@ -1149,6 +1235,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                         String src = entry.getSrcText();
                         if (src != null) {
                             contextCachedSources.add(src);
+                            contextCachedEntries.add(entry);
                             // Read the user's actual (possibly edited) translation from OmegaT
                             try {
                                 TMXEntry tmx = Core.getProject().getTranslationInfo(entry);
@@ -1164,6 +1251,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                 contextLastProjectPath = projectPath;
                 contextLastPosition = -1;
                 translationCache.clear();
+                segmentChain.reset();
             }
         } catch (Exception e) {
             Log.log(e);
@@ -1263,5 +1351,100 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         }
 
         return (hasAbove || hasBelow) ? sb.toString() : "";
+    }
+
+    // -------------------------------------------------------------------------
+    // Context chaining support (ordered, append-only "Previous segments" chain)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Resets the chain whenever OmegaT's MT cache is cleared (e.g. after the
+     * settings dialog is confirmed), so a changed chaining/chain-length
+     * setting takes effect immediately.
+     */
+    @Override
+    protected void clearCache() {
+        super.clearCache();
+        segmentChain = new SegmentChain(getChainLength());
+    }
+
+    /**
+     * Chain data lookup over the project's ordered entry list.
+     * <p>
+     * Translations come ONLY from OmegaT's stored project data, queried live —
+     * a segment joins the chain after its (possibly edited) translation is
+     * committed, never from this plugin's raw API output.
+     */
+    private SegmentChain.Lookup chainLookup() {
+        return new SegmentChain.Lookup() {
+            @Override
+            public String source(int pos) {
+                List<String> sources = getCachedAllSources();
+                return pos >= 0 && pos < sources.size() ? sources.get(pos) : null;
+            }
+
+            @Override
+            public String translation(int pos) {
+                try {
+                    if (Core.getProject() == null || contextCachedEntries == null
+                            || pos < 0 || pos >= contextCachedEntries.size()) {
+                        return null;
+                    }
+                    TMXEntry tmx = Core.getProject().getTranslationInfo(contextCachedEntries.get(pos));
+                    if (tmx != null && tmx.isTranslated() && tmx.translation != null
+                            && !tmx.translation.isEmpty()) {
+                        return tmx.translation;
+                    }
+                } catch (Exception e) {
+                    Log.log(e);
+                }
+                return null;
+            }
+        };
+    }
+
+    /**
+     * Renders one frozen chain line: {@code seg N : <src>  →  <trg>}.
+     * Both sides are flattened to one line and truncated to the configured
+     * context character limit. Called once per entry, at append time.
+     */
+    private String renderChainLine(int pos, String src, String trg) {
+        int truncLen = getContextTruncation();
+        String s = src.replace('\n', ' ').replace('\r', ' ');
+        if (truncLen > 0 && s.length() > truncLen) {
+            s = s.substring(0, truncLen) + "...";
+        }
+        String t = trg.replace('\n', ' ').replace('\r', ' ');
+        if (truncLen > 0 && t.length() > truncLen) {
+            t = t.substring(0, truncLen) + "...";
+        }
+        return "seg " + (pos + 1) + " : " + s + "  →  " + t;
+    }
+
+    /**
+     * Returns the source-only "Segment below for reference" block used in
+     * chaining mode (the segments after {@code position}).
+     */
+    private String getBelowContextText(int position, int count) {
+        if (count <= 0 || position < 0) return "";
+        List<String> sources = getCachedAllSources();
+        int truncLen = getContextTruncation();
+
+        StringBuilder sb = new StringBuilder();
+        boolean hasBelow = false;
+        int belowEnd = Math.min(sources.size(), position + count + 1);
+        for (int i = position + 1; i < belowEnd; i++) {
+            String t = sources.get(i).replace('\n', ' ').replace('\r', ' ');
+            if (truncLen > 0 && t.length() > truncLen) {
+                t = t.substring(0, truncLen) + "...";
+            }
+            if (!hasBelow) {
+                sb.append("\n\nSegment below for reference "
+                    + "(DO NOT translate these — only the current segment):");
+                hasBelow = true;
+            }
+            sb.append("\n").append(t);
+        }
+        return hasBelow ? sb.toString() : "";
     }
 }

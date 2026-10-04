@@ -207,6 +207,38 @@ public class DeepSeekTranslateTest {
     }
 
     @Test
+    public void chainingEnabledDoesNotCrashWithoutProject() throws Exception {
+        Preferences.setPreference(DeepSeekTranslate.ALLOW_DEEPSEEK_TRANSLATE, true);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_MODEL, "deepseek-v4-flash");
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_TEMPERATURE, "0.3");
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_DYNAMIC_TEMPERATURE, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_CONTEXT_SEGMENTS, 2);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_CONTEXT_CHAINING, true);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_CONTEXT_CHAIN_LENGTH, 100);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_AUTO_GLOSSARY, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_SELF_REVIEW, false);
+        Preferences.setPreference(DeepSeekTranslate.PROPERTY_REASONING_EFFORT, 0);
+
+        DeepSeekTranslate translate = new DeepSeekTranslate();
+        // Should not throw — when no project is open, chaining is simply skipped
+        String json = translate.createJsonRequest(new Language("EN"), new Language("DE"), "Hello world");
+
+        String expected = "{"
+            + "\"messages\":["
+            + "{\"content\":\"You are a professional translation engine for OmegaT. "
+                + "Translate from en to de. Preserve tags, placeholders, and line breaks. "
+                + "Return only the translated text.\",\"role\":\"system\"},"
+                + "{\"content\":\"Hello world\",\"role\":\"user\"}],"
+                + "\"model\":\"deepseek-v4-flash\","
+                + "\"stream\":false,"
+                + "\"temperature\":0.3,"
+                + "\"reasoning\":{\"effort\":\"none\"}}";
+
+        ObjectMapper mapper = new ObjectMapper();
+        assertEquals(mapper.readTree(expected), mapper.readTree(json));
+    }
+
+    @Test
     public void reasoningMaximumSendsMax() throws Exception {
         Preferences.setPreference(DeepSeekTranslate.ALLOW_DEEPSEEK_TRANSLATE, true);
         Preferences.setPreference(DeepSeekTranslate.PROPERTY_MODEL, "deepseek-v4-flash");
