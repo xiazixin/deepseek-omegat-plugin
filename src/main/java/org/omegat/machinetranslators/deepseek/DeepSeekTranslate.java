@@ -83,9 +83,9 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private static final int CONTEXT_SEGMENTS_DEFAULT = 0;
     private static final int CONTEXT_SEGMENTS_MAX = 3;
 
-    /** Max characters per context segment before truncation */
+    /** Max characters per context segment before truncation (0 = no limit) */
     public static final String PROPERTY_CONTEXT_TRUNCATION = "deepseek.api.context_truncation";
-    private static final int CONTEXT_TRUNCATION_DEFAULT = 400;
+    private static final int CONTEXT_TRUNCATION_DEFAULT = 0;
     private static final int[] CONTEXT_TRUNCATION_OPTIONS = { 200, 400, 600, 800, 1000, 0 };
 
     /** Ordered context chaining: append-only "Previous segments" chain (KV-cache friendly) */
@@ -910,11 +910,11 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         for (int i = 0; i < CONTEXT_TRUNCATION_OPTIONS.length; i++) {
             if (CONTEXT_TRUNCATION_OPTIONS[i] == value) return i;
         }
-        // Default to 400
+        // Default to No limit
         for (int i = 0; i < CONTEXT_TRUNCATION_OPTIONS.length; i++) {
             if (CONTEXT_TRUNCATION_OPTIONS[i] == CONTEXT_TRUNCATION_DEFAULT) return i;
         }
-        return 1;
+        return CONTEXT_TRUNCATION_OPTIONS.length - 1;
     }
 
     private boolean isContextChaining() {

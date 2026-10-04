@@ -62,7 +62,7 @@ Open OmegaT's machine translation settings and configure the DeepSeek engine.
 | Dynamic Temperature | Off | When enabled, lets the API auto-adjust temperature — the slider is ignored |
 | Glossary | None | **None** — glossary disabled. **Reference** — glossary entries are followed by default; the AI may override an entry only when using it literally would cause a factual, grammatical, or stylistic error (e.g. `白金色` stays `platinum color` even with `金色 → gold color` in the glossary) — never for preference or variety. **Strict** — glossary entries must be used exactly. |
 | Context segments | 0 | Number of surrounding segments (above and below) to include as context. 0 = disabled, up to 3. Helps AI maintain narrative continuity and tone. |
-| Context char limit | 400 | Max characters per context segment before truncation. Options: 200, 400, 600, 800, 1000, or No limit. Adjust based on your segment size. |
+| Context char limit | No limit | Max characters per context segment before truncation. Options: 200, 400, 600, 800, 1000, or No limit. Adjust based on your segment size. |
 | Context chaining | Off | Ordered, append-only chain of previous segments (`seg 1, 2, 3…` with your stored translations). Replaces the `[Above]` context format; segments below still follow **Context segments**. |
 | Chain length | 100 | Max previous segments kept in the chain: 25, 50, 100, 200, or No limit. When full, the chain resets (one cache break) and regrows from the current segment. |
 
@@ -92,7 +92,7 @@ When set to a value greater than 0, the plugin includes up to N segments above a
 
 **Segments above** include both the source text *and* the user's actual stored translation from OmegaT (shown as `SRC → TRG`). This means if you manually edit a translation, the AI sees your corrected version — not its own raw output. Falls back to the plugin's own cached output if no stored translation exists yet.
 
-Context segments are truncated to the configured character limit (200–1000, or no limit). Adjust based on your typical segment size — higher values for paragraph-level segmentation, lower for sentence-level. Default is 400 characters.
+Context segments are truncated to the configured character limit (200–1000, or no limit). Adjust based on your typical segment size — higher values for paragraph-level segmentation, lower for sentence-level. Default is No limit.
 
 ## Context Chaining
 
@@ -147,6 +147,7 @@ Segments below the current one (source only, "DO NOT translate") still follow th
 
 ### 1.7.0
 - **New: Context chaining** — ordered, append-only chain of previous segments (`seg 1 : src → trg`, `seg 2 : …`) built into every system prompt, replacing the sliding `[Above]` window when enabled. Entries come only from translations stored in the OmegaT project (your edited text — raw AI replies never enter the chain), grow only in order, never extend across an untranslated gap (jumping 3 → 5 keeps the chain but can't extend it; segment 5 joins only after segment 4 is translated), and are frozen at append time — so the prompt prefix stays byte-stable and DeepSeek's context cache keeps hitting. New **Chain length** setting (25/50/100/200/No limit, default 100): on overflow the chain resets once and regrows instead of sliding. Segments below still follow **Context segments**; truncation still follows **Context char limit**.
+- **Changed: Context char limit default** — now **No limit** (was 400). If you previously confirmed the settings dialog, your stored value is kept — set it to No limit once to opt in.
 
 ### 1.6.2
 - **New: DeepSeek V4.1 Flash model** — the latest DeepSeek model, called in the API as `deepseek-flash`, is now the default (see the [V4.1 Flash announcement](https://api-docs.deepseek.com/zh-cn/news/news260910)). The retired `deepseek-v4-flash` was removed from the selector (the API temporarily routes it to V4.1 Flash). `deepseek-v4-pro` remains selectable, but DeepSeek is sunsetting it — requests are routed to V4.1 Flash after 2026-09-14.
