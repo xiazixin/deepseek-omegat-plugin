@@ -921,7 +921,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         return Preferences.isPreference(PROPERTY_CONTEXT_CHAINING);
     }
 
-    private int getChainLength() {
+    private static int getChainLength() {
         return Preferences.getPreferenceDefault(PROPERTY_CONTEXT_CHAIN_LENGTH,
                 CONTEXT_CHAIN_LENGTH_DEFAULT);
     }
@@ -946,8 +946,30 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
     private List<SourceTextEntry> contextCachedEntries = null;
 
     /** Ordered, append-only chain of previously translated segments (context
-     *  chaining). Replaced on reset so a new chain length setting takes effect. */
-    private volatile SegmentChain segmentChain = new SegmentChain(getChainLength());
+     *  chaining). Static because the chain is session-global state — shared
+     *  no matter how many translator instances OmegaT creates. Lazily created
+     *  so the chain length preference is read after Preferences init. */
+    private static volatile SegmentChain segmentChain;
+
+    private static SegmentChain getSegmentChain() {
+        SegmentChain chain = segmentChain;
+        if (chain == null) {
+            synchronized (DeepSeekTranslate.class) {
+                chain = segmentChain;
+                if (chain == null) {
+                    chain = new SegmentChain(getChainLength());
+                    segmentChain = chain;
+                }
+            }
+        }
+        return chain;
+    }
+
+    /** Clears the context chain (DeepSeek menu "Clear context chain").
+     *  The next translation request starts a new chain from its segment. */
+    static void clearSegmentChain() {
+        getSegmentChain().reset();
+    }
 
     /** Caches this plugin's own translation output as a fallback for context continuity.
      *  Wrapped with synchronizedMap because LinkedHashMap with access-order
@@ -1044,8 +1066,9 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             // shared prompt prefix keeps growing instead of changing (KV cache).
             int pos = findSourcePosition(text);
             if (pos >= 0) {
-                segmentChain.update(pos, chainLookup(), this::renderChainLine);
-                prompt.append(segmentChain.render(pos));
+                SegmentChain chain = getSegmentChain();
+                chain.update(pos, chainLookup(), this::renderChainLine);
+                prompt.append(chain.render(pos));
                 if (contextCount > 0) {
                     String below = getBelowContextText(pos, contextCount);
                     if (!below.isEmpty()) {
@@ -1251,7 +1274,7 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
                 contextLastProjectPath = projectPath;
                 contextLastPosition = -1;
                 translationCache.clear();
-                segmentChain.reset();
+                getSegmentChain().reset();
             }
         } catch (Exception e) {
             Log.log(e);

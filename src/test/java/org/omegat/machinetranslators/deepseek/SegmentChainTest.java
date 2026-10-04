@@ -127,6 +127,52 @@ public class SegmentChainTest {
     }
 
     @Test
+    public void outOfOrderFillBackfillsEverythingContiguous() {
+        SegmentChain chain = new SegmentChain(0);
+        ScriptedLookup lookup = new ScriptedLookup();
+        for (int i = 0; i < 10; i++) {
+            lookup.sources.put(i, "s" + i);
+        }
+
+        // Translate segments 1, 2, 3 in order (translation stored on leaving)
+        chain.update(0, lookup, RENDERER);
+        lookup.translations.put(0, "t0");
+        chain.update(1, lookup, RENDERER);
+        lookup.translations.put(1, "t1");
+        chain.update(2, lookup, RENDERER);
+        lookup.translations.put(2, "t2");
+
+        // Jump to segment 6 and translate it: chain stalls at the gap (seg 4)
+        chain.update(5, lookup, RENDERER);
+        lookup.translations.put(5, "t5");
+        assertEquals("\n\nPrevious segments\n"
+                + "seg 1 : s0  →  t0\n"
+                + "seg 2 : s1  →  t1\n"
+                + "seg 3 : s2  →  t2\n"
+                + "\nCurrent segment: segment 6 below", chain.render(5));
+
+        // Jump to segment 10: still stalled
+        chain.update(9, lookup, RENDERER);
+
+        // Go back and fill segment 5, then segment 4
+        chain.update(4, lookup, RENDERER);
+        lookup.translations.put(4, "t4");
+        chain.update(3, lookup, RENDERER);
+        lookup.translations.put(3, "t3");
+
+        // Jump to segment 7: ONE backfill pass appends 4, 5 and 6 in order
+        chain.update(6, lookup, RENDERER);
+        assertEquals("\n\nPrevious segments\n"
+                + "seg 1 : s0  →  t0\n"
+                + "seg 2 : s1  →  t1\n"
+                + "seg 3 : s2  →  t2\n"
+                + "seg 4 : s3  →  t3\n"
+                + "seg 5 : s4  →  t4\n"
+                + "seg 6 : s5  →  t5\n"
+                + "\nCurrent segment: segment 7 below", chain.render(6));
+    }
+
+    @Test
     public void backwardJumpRendersPrefixOnly() {
         SegmentChain chain = new SegmentChain(0);
         ScriptedLookup lookup = fullLookup(10);
