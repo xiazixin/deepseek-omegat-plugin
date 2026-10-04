@@ -1078,17 +1078,18 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         }
 
         int contextCount = getContextSegments();
+        int chainPos = -1;
         if (isContextChaining()) {
             // Context chaining: ordered, append-only "Previous segments" chain.
             // The chain block sits above the per-request dynamic sections so the
             // shared prompt prefix keeps growing instead of changing (KV cache).
-            int pos = findSourcePosition(text);
-            if (pos >= 0) {
+            chainPos = findSourcePosition(text);
+            if (chainPos >= 0) {
                 SegmentChain chain = getSegmentChain();
-                chain.update(pos, chainLookup(), this::renderChainLine);
-                prompt.append(chain.render(pos));
+                chain.update(chainPos, chainLookup(), this::renderChainLine);
+                prompt.append(chain.render(chainPos));
                 if (contextCount > 0) {
-                    String below = getBelowContextText(pos, contextCount);
+                    String below = getBelowContextText(chainPos, contextCount);
                     if (!below.isEmpty()) {
                         prompt.append(below);
                     }
@@ -1111,6 +1112,14 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             if (!matching.isEmpty()) {
                 prompt.append(formatGlossaryPrompt(matching, glossaryMode));
             }
+        }
+
+        // The "Current segment" marker closes the system prompt, immediately
+        // before the user message, so "below" can only point at the user
+        // message — the reference segments above it never get translated.
+        if (chainPos >= 0) {
+            prompt.append("\n\nCurrent segment: segment ").append(chainPos + 1)
+                .append(" below, in the user message. Translate only this segment.");
         }
 
         return prompt.toString();

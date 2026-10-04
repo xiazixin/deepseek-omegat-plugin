@@ -89,6 +89,9 @@ final class SegmentChain {
      * Renders the "Previous segments" block for a request at
      * {@code currentPos}, using only entries before it (a prefix of the
      * chain). Returns an empty string when there is nothing to show.
+     * The "Current segment" marker is NOT part of this block — the caller
+     * appends it at the very end of the system prompt, right before the
+     * user message, so reference material can never sit "below" it.
      */
     synchronized String render(int currentPos) {
         StringBuilder sb = new StringBuilder();
@@ -101,8 +104,8 @@ final class SegmentChain {
         if (sb.length() == 0) {
             return "";
         }
-        return "\n\nPrevious segments\n" + sb
-            + "\nCurrent segment: segment " + (currentPos + 1) + " below";
+        sb.setLength(sb.length() - 1); // drop the trailing newline
+        return "\n\nPrevious segments\n" + sb;
     }
 
     /** Clears the chain (project change, settings change). */

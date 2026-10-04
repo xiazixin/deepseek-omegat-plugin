@@ -104,12 +104,14 @@ seg 1 : <source>  →  <your stored translation>
 seg 2 : <source>  →  <your stored translation>
 seg 3 : <source>  →  <your stored translation>
 
-Current segment: segment 4 below
-
 Segment below for reference (DO NOT translate these — only the current segment):
 <source of segment 5>
 ...
+
+Current segment: segment 4 below, in the user message. Translate only this segment.
 ```
+
+The `Current segment` marker is always the last line of the system prompt, immediately before the user message holding the segment to translate — so everything above it (chain, reference segments, glossary) is unmistakably context, and "below" can only mean the user message itself.
 
 The rules:
 

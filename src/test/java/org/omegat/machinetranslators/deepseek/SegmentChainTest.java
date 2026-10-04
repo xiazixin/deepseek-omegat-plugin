@@ -52,16 +52,14 @@ public class SegmentChainTest {
 
         chain.update(1, lookup, RENDERER);
         assertEquals("\n\nPrevious segments\n"
-                + "seg 1 : s0  →  t0\n"
-                + "\nCurrent segment: segment 2 below", chain.render(1));
+                + "seg 1 : s0  →  t0", chain.render(1));
 
         chain.update(2, lookup, RENDERER);
         chain.update(3, lookup, RENDERER);
         assertEquals("\n\nPrevious segments\n"
                 + "seg 1 : s0  →  t0\n"
                 + "seg 2 : s1  →  t1\n"
-                + "seg 3 : s2  →  t2\n"
-                + "\nCurrent segment: segment 4 below", chain.render(3));
+                + "seg 3 : s2  →  t2", chain.render(3));
     }
 
     @Test
@@ -80,8 +78,7 @@ public class SegmentChainTest {
         assertEquals("\n\nPrevious segments\n"
                 + "seg 1 : s0  →  t0\n"
                 + "seg 2 : s1  →  t1\n"
-                + "seg 3 : s2  →  t2\n"
-                + "\nCurrent segment: segment 5 below", chain.render(4));
+                + "seg 3 : s2  →  t2", chain.render(4));
 
         // Position 4 (segment 5) is translated but can NOT join: the gap at
         // position 3 blocks it, even though position 4 has a translation
@@ -89,8 +86,7 @@ public class SegmentChainTest {
         assertEquals("\n\nPrevious segments\n"
                 + "seg 1 : s0  →  t0\n"
                 + "seg 2 : s1  →  t1\n"
-                + "seg 3 : s2  →  t2\n"
-                + "\nCurrent segment: segment 6 below", chain.render(5));
+                + "seg 3 : s2  →  t2", chain.render(5));
     }
 
     @Test
@@ -113,8 +109,7 @@ public class SegmentChainTest {
                 + "seg 1 : s0  →  t0\n"
                 + "seg 2 : s1  →  t1\n"
                 + "seg 3 : s2  →  t2\n"
-                + "seg 4 : s3  →  t3\n"
-                + "\nCurrent segment: segment 5 below", chain.render(4));
+                + "seg 4 : s3  →  t3", chain.render(4));
 
         chain.update(5, lookup, RENDERER);
         assertEquals("\n\nPrevious segments\n"
@@ -122,8 +117,7 @@ public class SegmentChainTest {
                 + "seg 2 : s1  →  t1\n"
                 + "seg 3 : s2  →  t2\n"
                 + "seg 4 : s3  →  t3\n"
-                + "seg 5 : s4  →  t4\n"
-                + "\nCurrent segment: segment 6 below", chain.render(5));
+                + "seg 5 : s4  →  t4", chain.render(5));
     }
 
     @Test
@@ -148,8 +142,7 @@ public class SegmentChainTest {
         assertEquals("\n\nPrevious segments\n"
                 + "seg 1 : s0  →  t0\n"
                 + "seg 2 : s1  →  t1\n"
-                + "seg 3 : s2  →  t2\n"
-                + "\nCurrent segment: segment 6 below", chain.render(5));
+                + "seg 3 : s2  →  t2", chain.render(5));
 
         // Jump to segment 10: still stalled
         chain.update(9, lookup, RENDERER);
@@ -168,8 +161,7 @@ public class SegmentChainTest {
                 + "seg 3 : s2  →  t2\n"
                 + "seg 4 : s3  →  t3\n"
                 + "seg 5 : s4  →  t4\n"
-                + "seg 6 : s5  →  t5\n"
-                + "\nCurrent segment: segment 7 below", chain.render(6));
+                + "seg 6 : s5  →  t5", chain.render(6));
     }
 
     @Test
@@ -183,8 +175,7 @@ public class SegmentChainTest {
 
         // Jump back to position 1 (segment 2): only earlier entries render
         assertEquals("\n\nPrevious segments\n"
-                + "seg 1 : s0  →  t0\n"
-                + "\nCurrent segment: segment 2 below", chain.render(1));
+                + "seg 1 : s0  →  t0", chain.render(1));
     }
 
     @Test
@@ -202,8 +193,7 @@ public class SegmentChainTest {
         // The chain still shows the version frozen at append time
         assertEquals("\n\nPrevious segments\n"
                 + "seg 1 : s0  →  t0\n"
-                + "seg 2 : s1  →  t1\n"
-                + "\nCurrent segment: segment 3 below", chain.render(2));
+                + "seg 2 : s1  →  t1", chain.render(2));
     }
 
     @Test
@@ -222,8 +212,7 @@ public class SegmentChainTest {
 
         chain.update(4, lookup, RENDERER);
         assertEquals("\n\nPrevious segments\n"
-                + "seg 4 : s3  →  t3\n"
-                + "\nCurrent segment: segment 5 below", chain.render(4));
+                + "seg 4 : s3  →  t3", chain.render(4));
     }
 
     @Test
