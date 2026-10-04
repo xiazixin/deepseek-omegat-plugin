@@ -204,11 +204,14 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
         }
 
         // Auto-insert the translation into the editor if the master toggle is active
-        // and at least one auto feature is enabled in settings
+        // and at least one auto feature is enabled in settings. The source text is
+        // passed along so the deferred insert can verify the cursor is still on the
+        // segment that was translated before writing anything.
         if (translated != null && !translated.isEmpty()
                 && isAutoActive() && (isAutoInsert() || isAutoConfirm())) {
             final String finalTranslation = translated;
-            SwingUtilities.invokeLater(() -> autoInsertTranslation(finalTranslation));
+            final String finalSourceText = sourceText;
+            SwingUtilities.invokeLater(() -> autoInsertTranslation(finalSourceText, finalTranslation));
         }
 
         return translated;
@@ -453,8 +456,15 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
      * advance to the next untranslated segment.
      * <p>
      * Must be called from the Swing UI thread.
+     *
+     * @param expectedSource the source text that was translated. This runnable
+     *        is queued with {@code invokeLater} and the cursor can move before
+     *        it runs (auto-confirm advance, a stale advance timer, an
+     *        overlapping fetch, or manual navigation) — without this identity
+     *        check the text would be written into whatever segment the cursor
+     *        happens to be on.
      */
-    private void autoInsertTranslation(String translated) {
+    private void autoInsertTranslation(String expectedSource, String translated) {
         try {
             IEditor editor = Core.getEditor();
             if (editor == null) {
@@ -462,6 +472,14 @@ public class DeepSeekTranslate extends BaseCachedTranslate {
             }
             SourceTextEntry currentEntry = editor.getCurrentEntry();
             if (currentEntry == null) {
+                return;
+            }
+            // Segment identity check: skip the insert when the cursor is no
+            // longer on the translated segment. The translation stays in the
+            // MT cache, so navigating back to the segment re-offers it.
+            if (!expectedSource.equals(currentEntry.getSrcText())) {
+                Log.log("DeepSeek auto-insert skipped: cursor moved to entry "
+                        + currentEntry.entryNum() + " before the translation was inserted");
                 return;
             }
             // Only auto-insert if the target is empty (don't overwrite existing translations)
