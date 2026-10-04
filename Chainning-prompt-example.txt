@@ -1,0 +1,40 @@
+model: deepseek-flash
+stream: false
+
+=== system ===
+You are a professional translation engine for OmegaT. Translate from zh-CN to en-US. Preserve tags, placeholders, and line breaks.
+
+Work being translated (use this to match tone, genre, and terminology):
+- Author: 阴天神隐
+- Title: 高天之上
+- Tags: 奇幻·史诗奇幻
+ After translating, identify any key domain-specific terms or phrases that should be added to a translation glossary. Append them in this exact format at the very end:
+
+[GLOSSARY]
+source term = target term
+source term = target term ;; brief usage note or context
+[/GLOSSARY]
+
+Only include non-obvious or specialized terms. Do NOT include common words or phrases where the translation is literal. Add a short comment after ';;' when the usage is context-dependent. If no glossary terms are needed, omit the block entirely.
+
+Previous segments
+seg 1 :“官道虽然不差，但过段时间，本地子爵申请的援军估计就会抵达，尸体藏在那里，有大几率会被过路的士兵亦或是升华者发现，那时候，一个七八岁的孩子也无法掌控自己的命运。”  →  "Although the official road isn't a bad choice, before long, the reinforcements the local viscount applied for will likely arrive. If the body is hidden there, there is a high chance it will be discovered by passing soldiers or Transcenders—and at that point, a child of seven or eight wouldn't be able to control his own fate."
+seg 2 :“唯独城东的湖林，虽然平日来往的人也不少，但只是固定在几条道路上，尸体很快就会被各路野兽虫蚁吃掉，综合起来最为安全。”  →  Only the lake forest east of the city—though quite a few people pass through it on ordinary days, they stay on the fixed paths—a corpse there would soon be devoured by all manner of beasts, insects, and ants. All things considered, it's the safest option.
+seg 3 :“这应该是在出手杀人前，就已经想好的筹划，不然的话，不至于这么快就作出正确的决定。”  →  This must have been a plan he had already worked out before he struck to kill—otherwise, there's no way he could have made the right decision so quickly.
+
+Current segment: segment 4 below === user ===
+
+Segment below for reference (DO NOT translate these — only the current segment):
+——野兽并没有武器的概念，草叉长矛，利剑长刀，就是人类的牙齿和爪子。
+男孩双手握住草叉，一只手握住叉头下方，看样子是主动缩短了攻击距离，令野兽跃跃欲试，但其实他随时可以延长发动攻击，更有利地刺出自己的利爪。
+这个见识，就连一般的战士都不会有。
+
+Reference glossary — follow these translations by default. Override an entry ONLY when using it literally would cause a factual, grammatical, or stylistic error (e.g., if the glossary has "金色 → gold color" and the text contains "白金色", still translate "白金色" as "platinum color"). Never replace a glossary translation solely for preference or variety:
+- 老骑士 → old knight
+- 窥探 → spy on  [especially psychic spying in this context]
+- 赞叹 → amazed  [expresses admiration and marvel at someone’s conduct]
+- 更 → chapter update  [web novel slang for posting a new chapter (e.g. 3更 = three chapters/updates in a day)]
+
+
+=== user ===
+而接下来，男孩在察觉有野兽窥探自己时的举动，更是令老骑士感到赞叹。

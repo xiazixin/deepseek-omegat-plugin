@@ -67,6 +67,16 @@ final class DeepSeekMenu {
                 promptsItem.addActionListener(e -> showCurrentPrompts());
                 menu.add(promptsItem);
 
+                JMenuItem clearChainItem = new JMenuItem(
+                        BUNDLE.getString("MT_ENGINE_DEEPSEEK_MENU_CHAIN_CLEAR"));
+                clearChainItem.setToolTipText(
+                        BUNDLE.getString("MT_ENGINE_DEEPSEEK_MENU_CHAIN_CLEAR_TOOLTIP"));
+                clearChainItem.addActionListener(e -> {
+                    DeepSeekTranslate.clearSegmentChain();
+                    showStatus(BUNDLE.getString("MT_ENGINE_DEEPSEEK_MENU_CHAIN_CLEARED"));
+                });
+                menu.add(clearChainItem);
+
                 menu.addSeparator();
 
                 JMenuItem openItem = new JMenuItem(
